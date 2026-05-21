@@ -15,5 +15,7 @@ minima:
 header_pages:
   - publisher-integration.md
 
+permalink: pretty
+
 # Disable unnecessary minima features
 show_excerpts: false
