@@ -1,0 +1,123 @@
+---
+---
+
+@import "minima";
+
+// ── Hola AI brand tokens ──────────────────────────────────────────────
+$hola-bg:          #F5EDE8;   // warm off-white, main background
+$hola-accent:      #E8522A;   // orange-red, brand accent
+$hola-text:        #1A1410;   // near-black, primary text
+$hola-text-muted:  #6B5E57;   // warm grey, secondary text
+$hola-surface:     #FFFFFF;   // card / code block background
+$hola-border:      #E0D5CF;   // soft warm border
+
+// ── Base ─────────────────────────────────────────────────────────────
+body {
+  background-color: $hola-bg;
+  color: $hola-text;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+// ── Site header ──────────────────────────────────────────────────────
+.site-header {
+  background-color: $hola-bg;
+  border-top: 3px solid $hola-accent;
+  border-bottom: 1px solid $hola-border;
+
+  .site-title {
+    color: $hola-text;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+
+    &:visited { color: $hola-text; }
+
+    &::after {
+      content: " AI";
+      color: $hola-accent;
+    }
+  }
+
+  .site-nav {
+    .page-link {
+      color: $hola-text-muted;
+      &:hover { color: $hola-accent; }
+    }
+  }
+}
+
+// ── Site footer ──────────────────────────────────────────────────────
+.site-footer {
+  background-color: $hola-bg;
+  border-top: 1px solid $hola-border;
+  color: $hola-text-muted;
+
+  a { color: $hola-accent; }
+}
+
+// ── Page content ─────────────────────────────────────────────────────
+.page-content {
+  background-color: $hola-bg;
+}
+
+h1, h2, h3, h4 {
+  color: $hola-text;
+  font-weight: 700;
+}
+
+h2 {
+  border-bottom: 2px solid $hola-accent;
+  padding-bottom: 0.25em;
+}
+
+a {
+  color: $hola-accent;
+  &:visited { color: darken($hola-accent, 10%); }
+  &:hover   { color: darken($hola-accent, 15%); }
+}
+
+// ── Code blocks ──────────────────────────────────────────────────────
+pre, code {
+  background-color: $hola-surface;
+  border: 1px solid $hola-border;
+  border-radius: 4px;
+}
+
+pre {
+  padding: 1em;
+}
+
+code {
+  padding: 0.15em 0.35em;
+  font-size: 0.9em;
+}
+
+// ── Tables ───────────────────────────────────────────────────────────
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 1.5em;
+
+  th {
+    background-color: $hola-accent;
+    color: $hola-surface;
+    padding: 0.5em 0.75em;
+    text-align: left;
+  }
+
+  td {
+    padding: 0.5em 0.75em;
+    border-bottom: 1px solid $hola-border;
+  }
+
+  tr:nth-child(even) td {
+    background-color: rgba(232, 82, 42, 0.04);
+  }
+}
+
+// ── Blockquotes (used for callouts) ──────────────────────────────────
+blockquote {
+  border-left: 4px solid $hola-accent;
+  background-color: rgba(232, 82, 42, 0.06);
+  padding: 0.75em 1em;
+  color: $hola-text-muted;
+}

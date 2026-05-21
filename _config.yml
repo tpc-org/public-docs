@@ -1,0 +1,19 @@
+title: Hola AI — Publisher Documentation
+description: Integration guides for Hola AI Ads publishers
+url: "https://tpc-org.github.io"
+baseurl: "/public-docs"
+
+# Jekyll settings
+markdown: kramdown
+highlighter: rouge
+theme: minima
+
+# Minima settings
+minima:
+  skin: classic
+
+header_pages:
+  - publisher-integration.md
+
+# Disable unnecessary minima features
+show_excerpts: false
