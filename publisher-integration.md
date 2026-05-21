@@ -1,3 +1,7 @@
+---
+layout: page
+---
+
 # Publisher integration guide
 
 This guide is for developers integrating Hola AI Ads into a publisher
