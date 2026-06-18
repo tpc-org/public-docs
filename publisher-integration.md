@@ -77,8 +77,7 @@ the bundle script:
     userId:   'user-123',     // optional — bundle auto-generates if omitted
     chatId:   'conv-abc',     // optional — bundle auto-generates if omitted
     messages: [               // required for contextual mode
-      { role: 'user',      content: 'Tell me about streaming services' },
-      { role: 'assistant', content: 'There are several options...' }
+      { role: 'user', content: "I'm looking for new shoes" }
     ]
   };
 </script>
