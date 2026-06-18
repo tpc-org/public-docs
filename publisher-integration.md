@@ -2,12 +2,15 @@
 layout: page
 ---
 
-# Publisher integration guide
+# Hola AI Ads — Publisher Integration Guide
 
-This guide is for developers integrating Hola AI Ads into a publisher
-page. Hola AI Ads is a header bidding ad service built on open standards
-(Prebid and OpenRTB). You'll need two things: a `<script>` tag and one
-or more `<div>` elements.
+**[Integration Guide](external-integration.md)** · [Changelog](#) · [Support](#contact)
+
+---
+
+This guide is for developers integrating Hola AI Ads into a publisher page.
+Hola AI Ads is a header bidding ad service built on open standards (Prebid and OpenRTB).
+You'll need two things: a `<script>` tag and one `<div>` element per placement.
 
 ## Quick start
 
@@ -17,92 +20,152 @@ Add this to your page's `<head>`:
 <script async src="https://s3.tpcsrv.com/clients/<your-client-id>/prebid.js"></script>
 ```
 
-Then place divs where you want ads to appear:
+Then place a div where you want an ad to appear:
 
 ```html
 <!-- Hola AI Ad Placement -->
-<div id="<placement-name>"></div>
+<div id="<placement-id>"></div>
 ```
 
-That's it. The bundle handles everything else — auction, render,
-failsafe. Add only the divs you want; unused placements don't run.
-
-Your Hola AI account manager will provide:
-- Your specific bundle URL
-- Your placement tags, pre-configured with your preferred ad formats and display settings
+That's it. The bundle handles everything else — auction, format selection, creative
+rendering, countdown, and refresh. Your Hola AI account manager will provide your
+specific bundle URL and placement IDs.
 
 ## Ad formats
 
-Hola AI Ads supports display (banner), native, and outstream video
-formats. Your account manager will configure your placements and provide
-a tag or tags for each format you want to run. Each placement tag is
-pre-configured with the appropriate format, size, and display settings
-for your site.
+Hola AI Ads runs display (banner), native, and outstream video formats from a single
+placement. The highest-value format wins each auction and is rendered automatically.
+No per-format configuration is needed on the publisher side.
 
-To add a placement to your page:
+### Native
 
-```html
-<!-- Hola AI Ad Placement -->
-<div id="<placement-name>"></div>
+A sponsored card with title, body text, optional thumbnail, and call-to-action.
+Renders inline without an iframe.
+
+```
+┌──────────────────────────────────┐
+│ Brand Name               Sponsored│
+│ ┌──────┐ Ad headline here         │
+│ │      │ Short description of the  │
+│ │ img  │ product or service.       │
+│ └──────┘ [Learn More]             │
+└──────────────────────────────────┘
 ```
 
-Place as many divs as you have placements. Unused placements — divs
-absent from the page — don't fire.
+### Display (banner)
 
-## Contextual native ads (AI assistant publishers)
+Standard 300×250 banner rendered in an iframe.
 
-If your site is an AI assistant or chat interface, the native placement
-supports two ad modes depending on whether conversation context is
-available.
+### Video (outstream)
 
-### Opener mode (default)
+640×480 outstream video player. Plays inline; no pre-roll or page video required.
 
-When no conversation context is provided, the placement runs in **opener**
-mode. Thrad selects relevant ads without conversation-specific targeting.
-No additional setup is needed — the bundle handles it automatically.
+### Live format examples
 
-### Contextual mode
+See [Ad Format Examples](ad-format-examples.html) for rendered previews of each format
+using the default Hola AI creative styling.
 
-When `messages` are provided, the placement switches to **contextual**
-mode. Thrad uses the conversation content to select ads matched to the
-current topic, improving relevance and yield.
+## Contextual AI ads
 
-To activate contextual mode, set `window.tpc.data` before or after
-the bundle script:
+If your site is an AI assistant or chat interface, passing conversation context improves
+ad relevance and yield.
+
+### Without context (default)
+
+When no context is provided, the placement selects ads without conversation-specific
+targeting. No additional setup is needed.
+
+### With context
+
+When `messages` are provided, the placement switches to contextual mode — ads are
+matched to the current conversation topic.
+
+Set `window.tpc.data` before or after the bundle script:
 
 ```html
 <script>
   window.tpc = window.tpc || {};
   window.tpc.data = {
-    userId:   'user-123',     // optional — bundle auto-generates if omitted
-    chatId:   'conv-abc',     // optional — bundle auto-generates if omitted
     messages: [               // required for contextual mode
       { role: 'user', content: "I'm looking for new shoes" }
-    ]
+    ],
+    userId:   'user-123',     // optional — bundle auto-generates if omitted
+    chatId:   'conv-abc'      // optional — bundle auto-generates if omitted
   };
 </script>
 ```
 
-`messages` is the only field that changes ad behaviour. `userId` and
-`chatId` are auto-generated by the bundle when omitted — you only need
-to supply them if you want to pass your own stable identifiers.
+`messages` is the only field that changes ad behaviour. `userId` and `chatId` are
+auto-generated when omitted — supply them only if you want to pass stable identifiers.
 
-**You do not need to pass any bidder parameters.** The bundle and
-server-side configuration handle all bidder communication automatically.
+**You do not need to pass any bidder parameters.** The bundle and server-side
+configuration handle all demand partner communication automatically.
 
-## CMP requirement
+## Publisher settings
 
-Your page must have an IAB TCF v2.2-compatible Consent Management
-Platform (CMP) loaded before (or alongside) the Hola AI bundle. It is
-your responsibility to ensure appropriate consent signals are provided
-before the auction runs.
+Override default bundle behaviour via `window.tpc.settings`:
 
-If you do not have a CMP, contact your Hola AI account manager. Use of
-the platform is subject to applicable privacy and data protection laws
-and regulations, including GDPR, CCPA/CPRA, and similar frameworks.
-Specific responsibilities and obligations related to compliance, data
-handling, and processing are defined in the applicable Data Processing
-Agreement (DPA) between the parties.
+```html
+<script>
+  window.tpc = window.tpc || {};
+  window.tpc.settings = {
+    adDisplaySeconds: 20,   // how long each ad is shown (default: 30)
+    adMaxRefresh: 2         // max sequential ads per session (default: 3)
+  };
+</script>
+```
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `adDisplaySeconds` | number | 30 | Seconds each ad is displayed before auto-closing |
+| `adMaxRefresh` | number | 3 | Maximum number of sequential ads shown per session |
+
+Settings can be set at any time before the first auction fires. They are read lazily
+so placement order relative to the bundle script does not matter.
+
+> **Coming soon:** `renderMode: 'iframe'` — renders the creative inside an iframe for
+> additional isolation. Available on request.
+
+## Consent
+
+### With a CMP (recommended)
+
+The bundle integrates with any IAB TCF 2.x-compatible Consent Management Platform.
+Load your CMP before or alongside the bundle — consent signals are read automatically.
+
+### Without a CMP
+
+If your site captures consent during publisher sign-up or another flow, you can pass a
+TCF consent string directly:
+
+```html
+<script>
+  window.tpc = window.tpc || {};
+  window.tpc.settings = {
+    tcfString: '<your-tcf-consent-string>'
+  };
+</script>
+```
+
+The bundle will use this string in place of a CMP. If neither a CMP nor a `tcfString`
+is provided, the bundle proceeds with default consent settings as configured by your
+Hola AI account manager.
+
+#### Example TCF 2.3 strings (for testing only)
+
+**All purposes consented, all vendors:**
+```
+CQJz4oAQJz4oAGXABBENBdFsAP_gAEPgAAATIIDoBJCoAAAAAA
+```
+
+**No consent:**
+```
+CQAAAAAAAAAAAAAAAABzAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+```
+
+> These strings are illustrative only. For production use, generate strings with your
+> CMP or a TCF-compliant encoder library such as
+> [iabtcf-encoder](https://www.npmjs.com/package/@iabtcf/encoder).
 
 ## Page integration example
 
@@ -115,7 +178,15 @@ A complete minimal page:
   <meta charset="utf-8">
   <title>My page</title>
 
-  <!-- Your CMP script goes here -->
+  <!-- Publisher settings (optional) -->
+  <script>
+    window.tpc = {
+      settings: { adDisplaySeconds: 30, adMaxRefresh: 3 },
+      data: {
+        messages: [{ role: 'user', content: "I'm looking for new shoes" }]
+      }
+    };
+  </script>
 
   <!-- Hola AI bundle (replace with your actual bundle URL) -->
   <script async src="https://s3.tpcsrv.com/clients/<clientid>/prebid.js"></script>
@@ -124,8 +195,8 @@ A complete minimal page:
 
   <!-- Your page content -->
 
-  <!-- Hola AI Ad Placements — add only the placements you want -->
-  <div id="<placement-name>"></div>
+  <!-- Hola AI Ad Placement -->
+  <div id="<placement-id>"></div>
 
 </body>
 </html>
@@ -133,48 +204,35 @@ A complete minimal page:
 
 ## Performance notes
 
-- The bundle loads **asynchronously** (`<script async>`) — it does not
-  block page rendering
-- Auctions start as soon as the bundle parses, overlapping with the
-  rest of the page load
-- Default bid timeout is 1500ms; bids that don't return in time are
-  dropped
-- A 3500ms failsafe ensures render always completes even if the auction
-  hangs
+- The bundle loads **asynchronously** (`<script async>`) — it does not block page rendering
+- Auctions start as soon as the bundle parses, overlapping with the rest of the page load
+- Default bid timeout: 1500ms
+- Failsafe timeout: 3500ms — render completes even if the auction hangs
 
-For best performance, place the `<script>` tag in `<head>` (with
-`async`). Placing it at the end of `<body>` delays auction start.
+For best performance, place the `<script>` tag in `<head>` with `async`.
 
 ## Troubleshooting
 
 ### No ads appearing
 
-1. Check your browser console for errors — the bundle logs warnings
-   with the `[tpc]` prefix
-2. Confirm the div `id` exactly matches your placement code (case-sensitive)
-3. Check the Network tab for a POST to your Hola AI auction endpoint
-   — if it's missing, the bundle didn't load
-4. Check your CMP is firing before the bundle's timeout expires
+1. Check the browser console for errors
+2. Confirm the div `id` exactly matches your placement ID (case-sensitive)
+3. Check the Network tab for a POST to the Hola AI auction endpoint — if missing, the
+   bundle did not load
+4. Append `?pbjs_debug=true` to the URL for verbose Prebid logging in the console
 
-### Ads appearing but wrong size
+### Native ad not styled correctly
 
-The ad renders at the size configured for your placement. If your
-container is smaller than the creative, the iframe clips. Ensure your
-container meets the minimum dimensions provided by your account manager.
+Native creatives render directly into the page DOM. Contact your Hola AI account manager
+to customise the native template (fonts, colours, layout).
 
-### Native ad not styled the way I want
+### Banner ad wrong size
 
-The native creative renders inside an iframe, so parent-page CSS cannot
-reach it. Contact your Hola AI account manager to customise the native
-creative template (fonts, colours, layout, border).
-
-### Testing without real traffic
-
-To test the integration before going live, open your page with
-`?pbjs_debug=true` appended to the URL. This enables verbose Prebid
-logging in the browser console showing every auction event.
+The ad renders at the size configured for your placement. Ensure your container is at
+least as wide as the configured banner size. Contact your account manager if you need
+different dimensions.
 
 ## Contact
 
-For integration questions, placement provisioning, or to request
-additional formats, contact your Hola AI account manager.
+For integration questions, placement provisioning, or to request additional formats,
+contact your Hola AI account manager.
