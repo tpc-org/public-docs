@@ -60,10 +60,60 @@ Standard 300×250 banner rendered in an iframe.
 
 640×480 outstream video player. Plays inline; no pre-roll or page video required.
 
-### Live format examples
+### Format examples
 
-See [Ad Format Examples](ad-format-examples.html) for rendered previews of each format
-using the default Hola AI creative styling.
+<table><tr><td valign="top" width="340">
+
+**Native**
+
+<div style="font-family:-apple-system,sans-serif;max-width:300px;border:1px solid #e8e8e8;border-radius:8px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.07)">
+  <div style="height:3px;background:#0070c0;width:70%"></div>
+  <div style="padding:14px 12px 12px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <span style="font-size:12px;font-weight:600;color:#333;flex:1">Brand Name</span>
+      <span style="font-size:10px;color:#ccc">Sponsored</span>
+    </div>
+    <div style="display:flex;gap:10px;align-items:flex-start">
+      <div style="width:80px;height:80px;background:#e8eef5;border-radius:4px;flex-shrink:0"></div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600;color:#222;margin-bottom:6px">Ad headline goes here</div>
+        <div style="font-size:11px;color:#666;margin-bottom:10px">Short description of the product or service being promoted.</div>
+        <span style="font-size:11px;color:#fff;background:#0070c0;padding:4px 12px;border-radius:12px">Learn More</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+</td><td valign="top" width="340">
+
+**Display (banner) — 300×250**
+
+<div style="font-family:-apple-system,sans-serif;max-width:300px;border:1px solid #e8e8e8;border-radius:8px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.07)">
+  <div style="height:3px;background:#0070c0;width:70%"></div>
+  <div style="width:300px;height:250px;background:linear-gradient(135deg,#e8eef5,#d0dce8);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;position:relative">
+    <span style="position:absolute;top:6px;right:8px;font-size:10px;color:#aaa">Sponsored</span>
+    <div style="font-size:16px;font-weight:700;color:#222;text-align:center;padding:0 20px">Banner creative</div>
+    <div style="font-size:12px;color:#555;text-align:center;padding:0 20px">300×250 display ad</div>
+    <span style="font-size:12px;color:#fff;background:#0070c0;padding:7px 18px;border-radius:20px">Shop Now</span>
+  </div>
+</div>
+
+</td></tr><tr><td valign="top" colspan="2">
+
+**Video (outstream) — 640×480, scales to container width**
+
+<div style="font-family:-apple-system,sans-serif;max-width:300px;border:1px solid #e8e8e8;border-radius:8px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.07)">
+  <div style="height:3px;background:#0070c0;width:70%"></div>
+  <div style="width:300px;height:200px;background:#111;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;position:relative">
+    <span style="position:absolute;top:6px;right:8px;font-size:10px;color:rgba(255,255,255,.5)">Sponsored</span>
+    <div style="width:52px;height:52px;border-radius:50%;border:2px solid rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center">
+      <div style="border-style:solid;border-width:10px 0 10px 18px;border-color:transparent transparent transparent rgba(255,255,255,.9);margin-left:3px"></div>
+    </div>
+    <span style="font-size:12px;color:rgba(255,255,255,.5)">Outstream video ad</span>
+  </div>
+</div>
+
+</td></tr></table>
 
 ## Contextual AI ads
 
@@ -135,21 +185,24 @@ Load your CMP before or alongside the bundle — consent signals are read automa
 
 ### Without a CMP
 
-If your site captures consent during publisher sign-up or another flow, you can pass a
-TCF consent string directly:
+If your site captures consent during publisher sign-up or another flow, you can pass
+consent strings directly via `window.tpc.settings`:
 
 ```html
 <script>
   window.tpc = window.tpc || {};
   window.tpc.settings = {
-    tcfString: '<your-tcf-consent-string>'
+    tcfString: '<tcf-2.3-consent-string>',   // GDPR / EU
+    gppString: '<gpp-consent-string>',        // US state privacy (GPP)
+    gppSid:    [7]                            // GPP section IDs — 7 = USNAT
   };
 </script>
 ```
 
-The bundle will use this string in place of a CMP. If neither a CMP nor a `tcfString`
-is provided, the bundle proceeds with default consent settings as configured by your
-Hola AI account manager.
+The bundle uses these strings in place of a CMP. Set only the strings relevant to your
+jurisdiction — `tcfString` for GDPR markets, `gppString`/`gppSid` for US markets. If
+neither is provided, the bundle proceeds with default consent settings as configured by
+your Hola AI account manager.
 
 #### Example TCF 2.3 strings (for testing only)
 
@@ -165,7 +218,32 @@ CQAAAAAAAAAAAAAAAABzAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 
 > These strings are illustrative only. For production use, generate strings with your
 > CMP or a TCF-compliant encoder library such as
-> [iabtcf-encoder](https://www.npmjs.com/package/@iabtcf/encoder).
+> [@iabtcf/encoder](https://www.npmjs.com/package/@iabtcf/encoder).
+
+#### Example GPP strings — USNAT (section 7) (for testing only)
+
+**All sharing permitted (no opt-outs):**
+```
+DBABBg==
+```
+
+**All opt-outs set (sharing not permitted):**
+```
+DBABjw==
+```
+
+Pass alongside `gppSid: [7]` to identify the USNAT section:
+
+```js
+window.tpc.settings = {
+  gppString: 'DBABBg==',
+  gppSid:    [7]
+};
+```
+
+> These strings are illustrative only. For production use, generate strings with your
+> CMP or a GPP-compliant encoder library such as
+> [@iabtcf/encoder](https://www.npmjs.com/package/@iabtcf/encoder) (supports GPP).
 
 ## Page integration example
 
