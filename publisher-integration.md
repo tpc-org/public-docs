@@ -280,6 +280,35 @@ A complete minimal page:
 </html>
 ```
 
+## Agency / multi-domain integration
+
+If you operate multiple publisher domains under one agency, all of them can
+share **one bundle URL** — you don't need a separate `<script>` tag per
+domain. Each domain just gets its **own placement `<div>` id**; the shared
+bundle detects which one is present on the page and runs that domain's
+auction automatically.
+
+**Site A** (e.g. `site-a.example.com`):
+
+```html
+<script async src="https://s3.tpcsrv.com/clients/<your-agency-id>/prebid.js"></script>
+<div id="<site-a-placement-id>"></div>
+```
+
+**Site B** (e.g. `site-b.example.com`):
+
+```html
+<script async src="https://s3.tpcsrv.com/clients/<your-agency-id>/prebid.js"></script>
+<div id="<site-b-placement-id>"></div>
+```
+
+Notice the `<script>` tag is **identical** on both sites — only the div id
+differs. Your Hola AI account manager provisions one placement (and one
+placement ID) per domain under your agency, and provides the resulting
+`<div id="...">` for each site to paste in. Add as many domains as you
+operate; each one only ever needs its own single div, never any other
+domain's.
+
 ## Performance notes
 
 - The bundle loads **asynchronously** (`<script async>`) — it does not block page rendering
