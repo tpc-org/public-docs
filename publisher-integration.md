@@ -4,7 +4,7 @@ layout: page
 
 # Hola AI Ads — Publisher Integration Guide
 
-**[Integration Guide](external-integration.md)** · [Changelog](#) · [Support](#contact)
+**[Integration Guide](external-integration.md)** · [Mobile SDK Guide](mobile-sdk-integration) · [Changelog](#) · [Support](#contact)
 
 ---
 
