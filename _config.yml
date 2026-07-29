@@ -15,6 +15,7 @@ minima:
 header_pages:
   - publisher-integration.md
   - mobile-sdk-integration.md
+  - reporting-api.md
 
 permalink: pretty
 
