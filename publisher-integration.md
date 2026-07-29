@@ -4,7 +4,7 @@ layout: page
 
 # Hola AI Ads — Publisher Integration Guide
 
-**[Integration Guide](/public-docs/publisher-integration/)** · [Mobile SDK Guide](/public-docs/mobile-sdk-integration/) · [Changelog](#) · [Support](#contact)
+**[Integration Guide](/public-docs/publisher-integration/)** · [Mobile SDK Guide](/public-docs/mobile-sdk-integration/) · [Reporting API Guide](/public-docs/reporting-api/) · [Changelog](#) · [Support](#contact)
 
 ---
 
@@ -308,6 +308,14 @@ placement ID) per domain under your agency, and provides the resulting
 `<div id="...">` for each site to paste in. Add as many domains as you
 operate; each one only ever needs its own single div, never any other
 domain's.
+
+## Reporting API
+
+Want your revenue data programmatically instead of (or alongside) the
+dashboard UI? See the [Reporting API Guide](/public-docs/reporting-api/) —
+a simple REST API authenticated with an API key your account manager can
+issue you, covering the same summary/timeseries/breakdown data shown in
+the dashboard.
 
 ## Performance notes
 
