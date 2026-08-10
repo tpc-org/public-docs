@@ -139,8 +139,9 @@ Set `window.tpc.data` before or after the bundle script:
     messages: [               // required for contextual mode
       { role: 'user', content: "I'm looking for new shoes" }
     ],
-    userId:   'user-123',     // optional — bundle auto-generates if omitted
-    chatId:   'conv-abc'      // optional — bundle auto-generates if omitted
+    userId:      'user-123',  // optional — bundle auto-generates if omitted
+    chatId:      'conv-abc',  // optional — bundle auto-generates if omitted
+    hashedEmail: '9f86d0...'  // optional — logged-in users only, see below
   };
 </script>
 ```
@@ -150,6 +151,33 @@ auto-generated when omitted — supply them only if you want to pass stable iden
 
 **You do not need to pass any bidder parameters.** The bundle and server-side
 configuration handle all demand partner communication automatically.
+
+### Logged-in users (optional)
+
+If a visitor is logged in and you know their email address, you can pass a
+**hashed** email to improve ad matching for one of our two demand partners:
+
+```html
+<script>
+  window.tpc.data = {
+    messages: [{ role: 'user', content: "..." }],
+    hashedEmail: '<sha256 hex digest>'
+  };
+</script>
+```
+
+- **Hash it yourself, before it ever reaches this bundle.** Required algorithm:
+  `SHA-256(email.trim().toLowerCase())`, as a lowercase hex string. Never pass a
+  plain email address — the field is named `hashedEmail` deliberately, and an
+  unhashed value will not be recognized as an email by either demand partner
+  (nor should it be sent to us in the first place).
+- **This only affects Gravity.** Thrad's own terms explicitly prohibit sending
+  email, name, or other PII through their API in any form, hashed or not — so
+  this field is never forwarded to Thrad, regardless of whether you set it.
+  There's no equivalent for Thrad; omit it if you don't have Gravity-specific
+  needs in mind.
+- Entirely optional. Omitting it changes nothing else about ad behavior —
+  it's purely an additional identity signal for Gravity's matching.
 
 ## Publisher settings
 
