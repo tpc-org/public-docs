@@ -4,7 +4,7 @@ layout: page
 
 # Hola AI Ads — Reporting API Guide
 
-**[Reporting API Guide](/public-docs/reporting-api/)** · [Integration Guide](/public-docs/publisher-integration/) · [Mobile SDK Guide](/public-docs/mobile-sdk-integration/) · [Support](#contact)
+**[Reporting API Guide](/public-docs/reporting-api/)** · [Integration Guide](/public-docs/publisher-integration/) · [Mobile SDK Guide](/public-docs/mobile-sdk-integration/) · [Payment Details Guide](/public-docs/payment-details/) · [Support](#contact)
 
 ---
 
