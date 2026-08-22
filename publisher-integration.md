@@ -169,15 +169,14 @@ If a visitor is logged in and you know their email address, you can pass a
 - **Hash it yourself, before it ever reaches this bundle.** Required algorithm:
   `SHA-256(email.trim().toLowerCase())`, as a lowercase hex string. Never pass a
   plain email address — the field is named `hashedEmail` deliberately, and an
-  unhashed value will not be recognized as an email by either demand partner
-  (nor should it be sent to us in the first place).
-- **This only affects Gravity.** Thrad's own terms explicitly prohibit sending
-  email, name, or other PII through their API in any form, hashed or not — so
-  this field is never forwarded to Thrad, regardless of whether you set it.
-  There's no equivalent for Thrad; omit it if you don't have Gravity-specific
-  needs in mind.
+  unhashed value will not be recognized as an email by our demand.
+- **Only some demand actually uses this signal.** Not every demand source
+  supports (or permits) identity matching via email, hashed or not — our
+  server forwards it only where it's applicable, and silently ignores it
+  otherwise. There's nothing you need to know about which is which; set
+  it whenever you have it, and omit it otherwise.
 - Entirely optional. Omitting it changes nothing else about ad behavior —
-  it's purely an additional identity signal for Gravity's matching.
+  it's purely an additional identity signal where supported.
 
 ## Publisher settings
 

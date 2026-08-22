@@ -105,21 +105,24 @@ native (sponsored card with title/image/body/CTA — same 4-asset schema as
 web). Video is not yet supported for in-app; ask your account manager if you
 need it.
 
-## Dynamic per-auction content (Thrad / Imprezia)
+## Dynamic per-auction content
 
 If your app is an AI assistant or chat interface, this is the single
 biggest lever on ad relevance and yield for a native placement — the
 in-app counterpart of the web `<script>` integration's `window.tpc.data`
 and the [Server-side Guide](/public-docs/server-side-integration/)'s
-`buildBidderExt()` helper. All three integrations start from the same
-shape: one object per conversation, with `userId` (a stable per-user
-identifier), `sessionId` (a stable per-session identifier), and
-`messages` (the growing back-and-forth, `{role: 'user' | 'assistant',
-content}`). Where they differ is only in *how* that object reaches PBS:
-the web bundle and server-side backend build the whole request
-themselves; here, the SDK builds the request for you, so you attach your
-own JSON fragment to the specific ad unit before calling `fetchDemand`/
-`loadAd`, using the SDK's own imp-level ORTB merge method:
+generic content object. All three integrations start from the same
+shape, sent as-is under `ext.prebid.bidder.tpc`: one object per
+conversation, with `accountId`, `userId` (a stable per-user identifier),
+`sessionId` (a stable per-session identifier), and `messages` (the
+growing back-and-forth, `{role: 'user' | 'assistant', content}`). Our
+server resolves that object into whatever real demand is actually
+configured for the placement — you never send anything demand-source-
+specific yourself. Where the integrations differ is only in *how* that
+object reaches PBS: the web bundle and server-side backend build the
+whole request themselves; here, the SDK builds the request for you, so
+you attach your own JSON fragment to the specific ad unit before calling
+`fetchDemand`/`loadAd`, using the SDK's own imp-level ORTB merge method:
 
 - iOS: `adUnit.setImpORTBConfig(jsonString)`
 - Android: `adUnit.setImpOrtbConfig(jsonString)`
@@ -130,53 +133,45 @@ Stored Config's server-side fields. **We have not verified this merge's
 exact behavior against a running app** — no iOS/Android app exists in
 this workspace to test against, only Prebid's own published docs. Treat
 it as unconfirmed until you validate it yourself with the debug procedure
-below, before relying on it in production.
-
-| Partner | Reads | Derived from |
-|---|---|---|
-| Thrad | `ext.prebid.bidder.thrad.userId` — identity | `userId` |
-| Imprezia | `ext.prebid.bidder.imprezia.request` / `.response` — content, `.sessionId` — identity | the latest `user` / `assistant` entries in `messages`, plus `sessionId` |
+below, before relying on it in production. (Server-side resolution of the
+generic block itself — the part PBS does after the merge — is verified
+live; see this guide's internal section and
+`server-side-integration.md`'s internal "Platform mechanics" section.)
 
 **iOS (Swift):**
 
 ```swift
 // Same shape as the web/server-side integration's shared conversation
-// object — userId, sessionId, and messages. userId is a stable per-user
-// identifier and sessionId a per-session one: generate and persist both
-// yourself (e.g. a UUID per visitor, and a second UUID per conversation)
-// — there's no bundle or backend helper to do this for you here.
-// Imprezia's real API requires sessionId even though our own schema
-// marks it optional — omitting it gets a live 400 from Imprezia, not a
-// graceful skip.
+// object — accountId, userId, sessionId, and messages, sent as-is under
+// ext.prebid.bidder.tpc. userId is a stable per-user identifier and
+// sessionId a per-session one: generate and persist both yourself (e.g.
+// a UUID per visitor, and a second UUID per conversation) — there's no
+// bundle or backend helper to do this for you here. Our server resolves
+// this into whatever demand is actually configured for the placement —
+// there's no partner-specific mapping to do on your side.
 struct Message { let role: String; let content: String }
 
-// Derives each native demand partner's per-auction bidder ext from one
-// shared conversation object: Thrad reads identity (userId), Imprezia
-// reads content (the latest user/assistant turn) plus sessionId. Skip
-// this call entirely (don't call setImpORTBConfig) for a placement not
-// provisioned with either partner.
-func buildBidderExt(userId: String, sessionId: String, messages: [Message]) -> String {
-    let lastUser = messages.last(where: { $0.role == "user" })?.content ?? ""
-    let lastAssistant = messages.last(where: { $0.role == "assistant" })?.content
-    let response = (lastAssistant?.isEmpty == false) ? lastAssistant! : " " // ' ' placeholder — never ""
-
+func tpcBidderExt(accountId: String, userId: String, sessionId: String, messages: [Message]) -> String {
     let impExt: [String: Any] = [
-        "ext": ["prebid": ["bidder": [
-            "thrad": ["userId": userId],
-            "imprezia": ["request": lastUser, "response": response, "sessionId": sessionId],
-        ]]]
+        "ext": ["prebid": ["bidder": ["tpc": [
+            "accountId": accountId,
+            "userId": userId,
+            "sessionId": sessionId,
+            "messages": messages.map { ["role": $0.role, "content": $0.content] },
+        ]]]]
     ]
     let data = try! JSONSerialization.data(withJSONObject: impExt)
     return String(data: data, encoding: .utf8)!
 }
 
 let nativeAdUnit = NativeRequestAdUnit(configId: "<your-config-id>")
-nativeAdUnit.setImpORTBConfig(buildBidderExt(
+nativeAdUnit.setImpORTBConfig(tpcBidderExt(
+    accountId: "<your-account-id>",
     userId: "stable-per-user-id",
     sessionId: "stable-per-session-id",
     messages: [Message(role: "user", content: "I'm looking for new shoes")]
     // Add Message(role: "assistant", content: "...") once your reply
-    // exists, and call buildBidderExt + setImpORTBConfig again before
+    // exists, and call tpcBidderExt + setImpORTBConfig again before
     // the next auction — same "re-run on every new turn" pattern as
     // window.tpc.requestAd on web.
 ))
@@ -189,40 +184,34 @@ nativeAdUnit.fetchDemand { [weak self] result, kvResultDict in
 
 ```kotlin
 // Same shape as the web/server-side integration's shared conversation
-// object — userId, sessionId, and messages. userId is a stable per-user
-// identifier and sessionId a per-session one: generate and persist both
-// yourself — there's no bundle or backend helper to do this for you
-// here. Imprezia's real API requires sessionId even though our own
-// schema marks it optional — omitting it gets a live 400 from Imprezia,
-// not a graceful skip.
+// object — accountId, userId, sessionId, and messages, sent as-is under
+// ext.prebid.bidder.tpc. userId is a stable per-user identifier and
+// sessionId a per-session one: generate and persist both yourself —
+// there's no bundle or backend helper to do this for you here. Our
+// server resolves this into whatever demand is actually configured for
+// the placement — there's no partner-specific mapping to do on your side.
 data class Message(val role: String, val content: String)
 
-// Derives each native demand partner's per-auction bidder ext from one
-// shared conversation object: Thrad reads identity (userId), Imprezia
-// reads content (the latest user/assistant turn) plus sessionId. Skip
-// this call entirely (don't call setImpOrtbConfig) for a placement not
-// provisioned with either partner.
-fun buildBidderExt(userId: String, sessionId: String, messages: List<Message>): String {
-    val lastUser = messages.lastOrNull { it.role == "user" }?.content ?: ""
-    val lastAssistant = messages.lastOrNull { it.role == "assistant" }?.content
-    val response = if (!lastAssistant.isNullOrEmpty()) lastAssistant else " " // ' ' placeholder — never ""
-
-    val bidder = JSONObject()
-        .put("thrad", JSONObject().put("userId", userId))
-        .put("imprezia", JSONObject()
-            .put("request", lastUser)
-            .put("response", response)
-            .put("sessionId", sessionId))
+fun tpcBidderExt(accountId: String, userId: String, sessionId: String, messages: List<Message>): String {
+    val tpc = JSONObject()
+        .put("accountId", accountId)
+        .put("userId", userId)
+        .put("sessionId", sessionId)
+        .put("messages", messages.map {
+            JSONObject().put("role", it.role).put("content", it.content)
+        })
+    val bidder = JSONObject().put("tpc", tpc)
     return JSONObject().put("ext", JSONObject().put("prebid", JSONObject().put("bidder", bidder))).toString()
 }
 
 val nativeAdUnit = NativeAdUnit("<your-config-id>")
-nativeAdUnit.setImpOrtbConfig(buildBidderExt(
+nativeAdUnit.setImpOrtbConfig(tpcBidderExt(
+    accountId = "<your-account-id>",
     userId = "stable-per-user-id",
     sessionId = "stable-per-session-id",
     messages = listOf(Message(role = "user", content = "I'm looking for new shoes"))
     // Add Message(role = "assistant", content = "...") once your reply
-    // exists, and call buildBidderExt + setImpOrtbConfig again before
+    // exists, and call tpcBidderExt + setImpOrtbConfig again before
     // the next auction — same "re-run on every new turn" pattern as
     // window.tpc.requestAd on web.
 ))
@@ -231,19 +220,13 @@ nativeAdUnit.fetchDemand { result ->
 }
 ```
 
-Three things that will bite you if you build your own version of this:
+Two things that will bite you if you build your own version of this:
 
-- **Never send Imprezia's `response` as an empty string.** Your ad unit's
-  auction typically fires as soon as the user submits a prompt, before
-  your assistant has replied — so there's no assistant message yet.
-  Imprezia's API rejects an empty string outright (`"response" is not
-  allowed to be empty`); both samples above fall back to a single space
-  (`' '`) whenever there's no assistant turn.
-- **Always send Imprezia's `sessionId`.** Our own schema marks it
-  optional, but Imprezia's real API requires it — omit it and every
-  Imprezia auction gets a live 400 (`"sessionId" is required`), not a
-  graceful skip. Same rule as the server-side guide's own correction of
-  this exact gap.
+- **Send `messages` as it grows, turn by turn.** Your ad unit's auction
+  typically fires as soon as the user submits a prompt, before your
+  assistant has replied — that's fine, send whatever the conversation
+  looks like at auction time; our server never needs an empty field
+  worked around on your side.
 - **Call `setImpORTBConfig`/`setImpOrtbConfig` again on every new
   auction**, including refreshes — it's set on the ad unit instance, not
   persisted globally, so a stale call from an earlier turn will keep
@@ -260,19 +243,17 @@ PBS before shipping:
    config ID.
 2. Separately, hand-build the equivalent request using the curl skeleton
    in Troubleshooting below, with `"test": 1` and `"ext": {"prebid":
-   {"debug": true}}` added, and the same `thrad`/`imprezia` fields you're
-   sending from the app.
-3. Inspect `response.ext.debug.resolvedrequest.imp[0].ext.prebid.bidder.<bidder>`
+   {"debug": true}}` added, and the same `ext.prebid.bidder.tpc` fields
+   you're sending from the app.
+3. Inspect `response.ext.debug.resolvedrequest.imp[0].ext.prebid.bidder`
    in the response — this is PBS's own post-merge, pre-adapter view of
-   the imp. Confirm your dynamic fields (`userId`, `sessionId`,
-   `request`/`response`) show up there alongside the Stored Config's
-   static fields (`publisherId` for Thrad; `siteId`/`placementId` for
-   Imprezia) — not nested somewhere else, and not overwriting the static
-   fields instead of merging alongside them.
+   the imp. Confirm your `tpc` object (`accountId`, `userId`, `sessionId`,
+   `messages`) shows up there, and that it's actually been resolved into
+   whatever demand is configured for the placement.
 4. Treat this as a required step before calling any specific app
    integration "live," not an optional nicety — a merge landing at the
-   wrong key fails exactly like Imprezia's params silently failing to
-   reach PBS did on web earlier today, just via a different code path.
+   wrong key fails just as silently as a missed field anywhere else in
+   this pipeline, just via a different code path.
 
 ## Consent
 
