@@ -63,13 +63,17 @@ const NATIVE_REQUEST = JSON.stringify({
 });
 
 // Same shape as the web integration's window.tpc.data — one object per
-// conversation. `userId` is a stable per-user identifier: generate and
-// persist your own (e.g. a UUID per visitor) — the web bundle
-// auto-generates one when omitted, but there's no bundle here to do that
-// for you. `messages` grows by one entry each turn; the assistant entry
-// is only added once a reply exists.
+// conversation. `userId` is a stable per-user identifier and `sessionId`
+// a per-session one: generate and persist both yourself (e.g. a UUID per
+// visitor, and a second UUID per conversation/session) — the web bundle
+// auto-generates both when omitted, but there's no bundle here to do that
+// for you. Imprezia's real API requires sessionId even though our own
+// schema marks it optional — omitting it gets a live 400 from Imprezia,
+// not a graceful skip. `messages` grows by one entry each turn; the
+// assistant entry is only added once a reply exists.
 const tpcData = {
   userId: 'stable-per-user-id',
+  sessionId: 'stable-per-session-id',
   messages: [
     { role: 'user', content: "I'm looking for new shoes" },
     // { role: 'assistant', content: '...' } — add once your reply exists
@@ -79,7 +83,7 @@ const tpcData = {
 // Derives each native demand partner's per-auction bidder ext from one
 // shared conversation object. Omit this call (and the whole `bidder` key)
 // for a placement that isn't provisioned with either partner.
-function buildBidderExt({ userId, messages }) {
+function buildBidderExt({ userId, sessionId, messages }) {
   const lastUser = [...messages].reverse().find(m => m.role === 'user');
   const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant');
   return {
@@ -87,6 +91,7 @@ function buildBidderExt({ userId, messages }) {
     imprezia: {
       request: lastUser?.content ?? '',
       response: lastAssistant?.content || ' ', // ' ' placeholder until a reply exists — never ''
+      sessionId,
     },
   };
 }
@@ -162,26 +167,30 @@ const nativeRequest = `{"ver":"1.2","assets":[` +
 	`{"id":4,"required":0,"data":{"type":12,"len":30}}]}`
 
 // Same shape as the web integration's window.tpc.data — one object per
-// conversation. UserID is a stable per-user identifier: generate and
-// persist your own (e.g. a UUID per visitor) — the web bundle
-// auto-generates one when omitted, but there's no bundle here to do that
-// for you. Messages grows by one entry each turn; the assistant entry is
-// only added once a reply exists.
+// conversation. UserID is a stable per-user identifier and SessionID a
+// per-session one: generate and persist both yourself (e.g. a UUID per
+// visitor, and a second UUID per conversation/session) — the web bundle
+// auto-generates both when omitted, but there's no bundle here to do that
+// for you. Imprezia's real API requires SessionID even though our own
+// schema marks it optional — omitting it gets a live 400 from Imprezia,
+// not a graceful skip. Messages grows by one entry each turn; the
+// assistant entry is only added once a reply exists.
 type message struct {
 	Role    string
 	Content string
 }
 
 type tpcData struct {
-	UserID   string
-	Messages []message
+	UserID    string
+	SessionID string
+	Messages  []message
 }
 
 // buildBidderExt derives each native demand partner's per-auction bidder
 // ext from one shared conversation object: Thrad reads identity (UserID),
-// Imprezia reads content (the latest user/assistant turn). Omit the call
-// (and the whole "bidder" key) for a placement that isn't provisioned
-// with either partner.
+// Imprezia reads content (the latest user/assistant turn) plus SessionID.
+// Omit the call (and the whole "bidder" key) for a placement that isn't
+// provisioned with either partner.
 func buildBidderExt(d tpcData) map[string]any {
 	var lastUser, lastAssistant string
 	for i := len(d.Messages) - 1; i >= 0; i-- {
@@ -200,15 +209,17 @@ func buildBidderExt(d tpcData) map[string]any {
 	return map[string]any{
 		"thrad": map[string]any{"userId": d.UserID},
 		"imprezia": map[string]any{
-			"request":  lastUser,
-			"response": response,
+			"request":   lastUser,
+			"response":  response,
+			"sessionId": d.SessionID,
 		},
 	}
 }
 
 func main() {
 	data := tpcData{
-		UserID: "stable-per-user-id",
+		UserID:    "stable-per-user-id",
+		SessionID: "stable-per-session-id",
 		Messages: []message{
 			{Role: "user", Content: "I'm looking for new shoes"},
 			// {Role: "assistant", Content: "..."} — add once your reply exists
@@ -282,25 +293,31 @@ public class Example {
             + "{\"id\":4,\"required\":0,\"data\":{\"type\":12,\"len\":30}}]}";
 
     // Same shape as the web integration's window.tpc.data — one conversation.
-    // USER_ID is a stable per-user identifier: generate and persist your own
-    // (e.g. a UUID per visitor) — the web bundle auto-generates one when
-    // omitted, but there's no bundle here to do that for you.
-    // LAST_ASSISTANT_MESSAGE is empty until a reply exists.
+    // USER_ID is a stable per-user identifier and SESSION_ID a per-session
+    // one: generate and persist both yourself (e.g. a UUID per visitor, and
+    // a second UUID per conversation/session) — the web bundle
+    // auto-generates both when omitted, but there's no bundle here to do
+    // that for you. Imprezia's real API requires SESSION_ID even though our
+    // own schema marks it optional — omitting it gets a live 400 from
+    // Imprezia, not a graceful skip. LAST_ASSISTANT_MESSAGE is empty until a
+    // reply exists.
     private static final String USER_ID = "stable-per-user-id";
+    private static final String SESSION_ID = "stable-per-session-id";
     private static final String LAST_USER_MESSAGE = "I'm looking for new shoes";
     private static final String LAST_ASSISTANT_MESSAGE = "";
 
     // Derives each native demand partner's per-auction bidder ext from the
     // conversation fields above: Thrad reads identity (USER_ID), Imprezia
-    // reads content (the latest user/assistant turn). Omit the call (and the
-    // whole "bidder" key) for a placement that isn't provisioned with either
-    // partner.
+    // reads content (the latest user/assistant turn) plus SESSION_ID. Omit
+    // the call (and the whole "bidder" key) for a placement that isn't
+    // provisioned with either partner.
     private static String buildBidderExt() {
         String response = LAST_ASSISTANT_MESSAGE.isEmpty() ? " " : LAST_ASSISTANT_MESSAGE; // ' ' placeholder — never ""
         return "\"bidder\":{"
                 + "\"thrad\":{\"userId\":" + jsonString(USER_ID) + "},"
                 + "\"imprezia\":{\"request\":" + jsonString(LAST_USER_MESSAGE)
-                + ",\"response\":" + jsonString(response) + "}"
+                + ",\"response\":" + jsonString(response)
+                + ",\"sessionId\":" + jsonString(SESSION_ID) + "}"
                 + "}";
     }
 
@@ -351,20 +368,20 @@ If your site or app is an AI assistant or chat interface, this is the
 single biggest lever on ad relevance and yield — the server-side
 counterpart of the web `<script>` integration's `window.tpc.data`. Both
 integrations start from the same shape: one object per conversation, with
-`userId` (a stable per-user identifier) and `messages` (the growing
-back-and-forth, `{ role: 'user' | 'assistant', content }`). The web bundle
-turns that object into bidder params for you internally; server-side, the
-`buildBidderExt()` helper in each code sample above does the same job
-explicitly, splitting it across our two native demand partners by what
-each one actually reads:
+`userId` (a stable per-user identifier), `sessionId` (a stable per-session
+identifier), and `messages` (the growing back-and-forth, `{ role: 'user' |
+'assistant', content }`). The web bundle turns that object into bidder
+params for you internally; server-side, the `buildBidderExt()` helper in
+each code sample above does the same job explicitly, splitting it across
+our two native demand partners by what each one actually reads:
 
 | Partner | Reads | Derived from |
 |---|---|---|
 | Thrad | `ext.prebid.bidder.thrad.userId` — identity | `userId` |
-| Imprezia | `ext.prebid.bidder.imprezia.request` / `.response` — content | the latest `user` / `assistant` entries in `messages` |
+| Imprezia | `ext.prebid.bidder.imprezia.request` / `.response` — content, `.sessionId` — identity | the latest `user` / `assistant` entries in `messages`, plus `sessionId` |
 
 There's no single `messages` field at the OpenRTB2 layer itself — that's
-what the helper is for. Two things that will bite you if you build your
+what the helper is for. Three things that will bite you if you build your
 own version of it:
 
 - **Never send Imprezia's `response` as an empty string.** Your ad slot's
@@ -375,12 +392,18 @@ own version of it:
   single space (`' '`) whenever there's no assistant turn. Re-run the
   auction with the real reply once it lands if you want that later
   impression to reflect it.
-- **`userId` needs to be genuinely stable, and you own generating it.**
-  Unlike the web bundle, which auto-generates and persists one when
-  omitted, there's no bundle here to do that for you — generate one
-  yourself (e.g. a UUID per visitor) and keep sending the same value for
-  the same person across auctions, the same way `chatId`/`userId` persist
-  across turns on the web.
+- **Always send Imprezia's `sessionId`.** Our own schema marks it
+  optional, but Imprezia's real API requires it — omit it and every
+  Imprezia auction gets a live 400 (`"sessionId" is required`), not a
+  graceful skip. This is easy to miss because nothing in *our* validation
+  catches it; only Imprezia's own API does.
+- **`userId`/`sessionId` need to be genuinely stable, and you own
+  generating them.** Unlike the web bundle, which auto-generates and
+  persists both when omitted, there's no bundle here to do that for you —
+  generate your own (e.g. a UUID per visitor for `userId`, a second UUID
+  per conversation for `sessionId`) and keep sending the same values for
+  the same person/session across auctions, the same way
+  `chatId`/`userId`/`sessionId` persist across turns on the web.
 
 Omit the `bidder` key (or the whole helper call) for a placement that
 isn't provisioned with Thrad or Imprezia — PBS ignores bidder ext blocks
@@ -527,19 +550,22 @@ this one) drives the underlying traffic.
 ### No bid / empty `seatbid`
 
 A missing `seatbid` array is often a genuine no-fill, not an error — check
-`ext.errors` in the response first. Two common causes for native
-placements, with different blast radius:
+`ext.errors` in the response first. Neither native demand partner rejects
+the whole auction over a missing field — both fail soft, scoped to their
+own bid only:
 
-- **Thrad** requires `ext.prebid.bidder.thrad.userId` on the imp — if
-  it's missing, PBS returns a 400 rejecting the **whole imp** (every
-  bidder on it, not just Thrad).
-- **Imprezia** requires no field to avoid an error — a missing or empty
-  `ext.prebid.bidder.imprezia` block just means Imprezia quietly doesn't
-  bid, the rest of the auction proceeds normally. But if you *do* send
-  the block, `response` must never be `''` (empty string) — Imprezia's
-  API rejects that outright, taking only Imprezia's own bid down with it.
-  Send `' '` (a single space) as the pre-reply placeholder instead — see
-  "Contextual / chat-native ads" above.
+- **Thrad** requires `ext.prebid.bidder.thrad.userId` — if it's missing,
+  Thrad just doesn't bid (`ext.errors.thrad`), the rest of the auction
+  proceeds normally. You can omit the `thrad` block entirely for a
+  placement not provisioned with Thrad.
+- **Imprezia** requires no field to avoid an error either — a missing or
+  empty `ext.prebid.bidder.imprezia` block just means Imprezia quietly
+  doesn't bid. But if you *do* send the block, `response` must never be
+  `''` (empty string) and `sessionId` should always be present —
+  Imprezia's own API (not ours) rejects both outright, taking only
+  Imprezia's own bid down with it. Send `' '` (a single space) as the
+  pre-reply placeholder for `response`, and always generate a
+  `sessionId` — see "Contextual / chat-native ads" above.
 
 ### `Stored Request with ID=... not found` / `Stored Imp with ID=... not
 found`
