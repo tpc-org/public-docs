@@ -36,10 +36,12 @@ places:
 
 Complete, runnable examples in three languages. Each builds the same
 request: an OpenRTB2 `site` object, your placement's config ID, your
-account's auction stored request ID, and — for native placements — the
-per-auction fields our native demand partners need (a per-user identifier
-for Thrad; the conversation text for Imprezia, our chat-context demand —
-see "Contextual / chat-native ads" below).
+account's auction stored request ID, and — for native placements — one
+shared conversation object (`userId` + `messages`, the same shape as the
+web integration's `window.tpc.data`) that a small helper function turns
+into each native demand partner's own per-auction bidder ext: Thrad reads
+identity (`userId`), Imprezia reads content (the latest `messages` turn)
+— see "Contextual / chat-native ads" below for the mapping.
 
 **Node.js** (no dependencies — uses the built-in `fetch`):
 
@@ -60,6 +62,35 @@ const NATIVE_REQUEST = JSON.stringify({
   ],
 });
 
+// Same shape as the web integration's window.tpc.data — one object per
+// conversation. `userId` is a stable per-user identifier: generate and
+// persist your own (e.g. a UUID per visitor) — the web bundle
+// auto-generates one when omitted, but there's no bundle here to do that
+// for you. `messages` grows by one entry each turn; the assistant entry
+// is only added once a reply exists.
+const tpcData = {
+  userId: 'stable-per-user-id',
+  messages: [
+    { role: 'user', content: "I'm looking for new shoes" },
+    // { role: 'assistant', content: '...' } — add once your reply exists
+  ],
+};
+
+// Derives each native demand partner's per-auction bidder ext from one
+// shared conversation object. Omit this call (and the whole `bidder` key)
+// for a placement that isn't provisioned with either partner.
+function buildBidderExt({ userId, messages }) {
+  const lastUser = [...messages].reverse().find(m => m.role === 'user');
+  const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant');
+  return {
+    thrad: { userId },
+    imprezia: {
+      request: lastUser?.content ?? '',
+      response: lastAssistant?.content || ' ', // ' ' placeholder until a reply exists — never ''
+    },
+  };
+}
+
 async function runAuction() {
   const requestBody = {
     id: `req-${Date.now()}`,
@@ -71,17 +102,7 @@ async function runAuction() {
         ext: {
           prebid: {
             storedrequest: { id: NATIVE_CONFIG_ID },
-            bidder: {
-              thrad: { userId: 'stable-per-user-id' },
-              // Only if your placement is provisioned with Imprezia
-              // (chat-context demand) — see "Contextual / chat-native
-              // ads" below. Omit this block entirely for a placement
-              // without Imprezia.
-              imprezia: {
-                request: "user's current message",
-                response: ' ', // ' ' placeholder until an assistant reply exists — never ''
-              },
-            },
+            bidder: buildBidderExt(tpcData),
           },
         },
       },
@@ -140,7 +161,60 @@ const nativeRequest = `{"ver":"1.2","assets":[` +
 	`{"id":3,"required":0,"data":{"type":1}},` +
 	`{"id":4,"required":0,"data":{"type":12,"len":30}}]}`
 
+// Same shape as the web integration's window.tpc.data — one object per
+// conversation. UserID is a stable per-user identifier: generate and
+// persist your own (e.g. a UUID per visitor) — the web bundle
+// auto-generates one when omitted, but there's no bundle here to do that
+// for you. Messages grows by one entry each turn; the assistant entry is
+// only added once a reply exists.
+type message struct {
+	Role    string
+	Content string
+}
+
+type tpcData struct {
+	UserID   string
+	Messages []message
+}
+
+// buildBidderExt derives each native demand partner's per-auction bidder
+// ext from one shared conversation object: Thrad reads identity (UserID),
+// Imprezia reads content (the latest user/assistant turn). Omit the call
+// (and the whole "bidder" key) for a placement that isn't provisioned
+// with either partner.
+func buildBidderExt(d tpcData) map[string]any {
+	var lastUser, lastAssistant string
+	for i := len(d.Messages) - 1; i >= 0; i-- {
+		m := d.Messages[i]
+		if lastUser == "" && m.Role == "user" {
+			lastUser = m.Content
+		}
+		if lastAssistant == "" && m.Role == "assistant" {
+			lastAssistant = m.Content
+		}
+	}
+	response := lastAssistant
+	if response == "" {
+		response = " " // placeholder until a reply exists — never ""
+	}
+	return map[string]any{
+		"thrad": map[string]any{"userId": d.UserID},
+		"imprezia": map[string]any{
+			"request":  lastUser,
+			"response": response,
+		},
+	}
+}
+
 func main() {
+	data := tpcData{
+		UserID: "stable-per-user-id",
+		Messages: []message{
+			{Role: "user", Content: "I'm looking for new shoes"},
+			// {Role: "assistant", Content: "..."} — add once your reply exists
+		},
+	}
+
 	requestBody := map[string]any{
 		"id":   fmt.Sprintf("req-%d", time.Now().UnixMilli()),
 		"site": map[string]any{"page": "https://your-site.example.com/article"},
@@ -151,16 +225,7 @@ func main() {
 				"ext": map[string]any{
 					"prebid": map[string]any{
 						"storedrequest": map[string]any{"id": nativeConfigID},
-						"bidder": map[string]any{
-							"thrad": map[string]any{"userId": "stable-per-user-id"},
-							// Only if your placement is provisioned with Imprezia (chat-context
-							// demand) — see "Contextual / chat-native ads" below. Omit for a
-							// placement without Imprezia.
-							"imprezia": map[string]any{
-								"request":  "user's current message",
-								"response": " ", // placeholder until an assistant reply exists — never ""
-							},
-						},
+						"bidder": buildBidderExt(data),
 					},
 				},
 			},
@@ -216,6 +281,29 @@ public class Example {
             + "{\"id\":3,\"required\":0,\"data\":{\"type\":1}},"
             + "{\"id\":4,\"required\":0,\"data\":{\"type\":12,\"len\":30}}]}";
 
+    // Same shape as the web integration's window.tpc.data — one conversation.
+    // USER_ID is a stable per-user identifier: generate and persist your own
+    // (e.g. a UUID per visitor) — the web bundle auto-generates one when
+    // omitted, but there's no bundle here to do that for you.
+    // LAST_ASSISTANT_MESSAGE is empty until a reply exists.
+    private static final String USER_ID = "stable-per-user-id";
+    private static final String LAST_USER_MESSAGE = "I'm looking for new shoes";
+    private static final String LAST_ASSISTANT_MESSAGE = "";
+
+    // Derives each native demand partner's per-auction bidder ext from the
+    // conversation fields above: Thrad reads identity (USER_ID), Imprezia
+    // reads content (the latest user/assistant turn). Omit the call (and the
+    // whole "bidder" key) for a placement that isn't provisioned with either
+    // partner.
+    private static String buildBidderExt() {
+        String response = LAST_ASSISTANT_MESSAGE.isEmpty() ? " " : LAST_ASSISTANT_MESSAGE; // ' ' placeholder — never ""
+        return "\"bidder\":{"
+                + "\"thrad\":{\"userId\":" + jsonString(USER_ID) + "},"
+                + "\"imprezia\":{\"request\":" + jsonString(LAST_USER_MESSAGE)
+                + ",\"response\":" + jsonString(response) + "}"
+                + "}";
+    }
+
     public static void main(String[] args) throws Exception {
         String requestBody = "{"
                 + "\"id\":\"req-" + System.currentTimeMillis() + "\","
@@ -225,13 +313,7 @@ public class Example {
                 + "\"native\":{\"request\":" + jsonString(NATIVE_REQUEST) + ",\"ver\":\"1.2\"},"
                 + "\"ext\":{\"prebid\":{"
                 + "\"storedrequest\":{\"id\":\"" + NATIVE_CONFIG_ID + "\"},"
-                // "imprezia" is only needed if your placement is provisioned with
-                // Imprezia (chat-context demand) — see "Contextual / chat-native
-                // ads" below. Drop it for a placement without Imprezia.
-                + "\"bidder\":{"
-                + "\"thrad\":{\"userId\":\"stable-per-user-id\"},"
-                + "\"imprezia\":{\"request\":\"user's current message\",\"response\":\" \"}"
-                + "}"
+                + buildBidderExt()
                 + "}}"
                 + "}],"
                 + "\"ext\":{\"prebid\":{\"storedrequest\":{\"id\":\"" + AUCTION_STORED_REQUEST_ID + "\"}}},"
@@ -260,41 +342,50 @@ public class Example {
 ```
 
 A banner placement's request is simpler — swap the `native` object for
-`"banner": {"w": 300, "h": 250}` and drop the `thrad`/`imprezia` blocks
-(only native placements route through Thrad or Imprezia today).
+`"banner": {"w": 300, "h": 250}` and drop the `bidder` key entirely (only
+native placements route through Thrad or Imprezia today).
 
 ### Contextual / chat-native ads
 
 If your site or app is an AI assistant or chat interface, this is the
-single biggest lever on ad relevance and yield — the equivalent of the
-web `<script>` integration's `window.tpc.data.messages`. There's no
-`messages` array at the OpenRTB2 layer; instead, pass the conversation
-turn directly through Imprezia's per-auction bidder ext fields on the
-native imp (as shown in the examples above):
+single biggest lever on ad relevance and yield — the server-side
+counterpart of the web `<script>` integration's `window.tpc.data`. Both
+integrations start from the same shape: one object per conversation, with
+`userId` (a stable per-user identifier) and `messages` (the growing
+back-and-forth, `{ role: 'user' | 'assistant', content }`). The web bundle
+turns that object into bidder params for you internally; server-side, the
+`buildBidderExt()` helper in each code sample above does the same job
+explicitly, splitting it across our two native demand partners by what
+each one actually reads:
 
-| Field | Value |
-|---|---|
-| `ext.prebid.bidder.imprezia.request` | The user's current message/query |
-| `ext.prebid.bidder.imprezia.response` | The AI-generated reply being monetized |
+| Partner | Reads | Derived from |
+|---|---|---|
+| Thrad | `ext.prebid.bidder.thrad.userId` — identity | `userId` |
+| Imprezia | `ext.prebid.bidder.imprezia.request` / `.response` — content | the latest `user` / `assistant` entries in `messages` |
 
-Two things that will bite you if you skip them:
+There's no single `messages` field at the OpenRTB2 layer itself — that's
+what the helper is for. Two things that will bite you if you build your
+own version of it:
 
-- **Never send `response` as an empty string.** Your ad slot's auction
-  typically fires as soon as the user submits a prompt, before your
-  assistant has replied — so there's no response text yet. Imprezia's API
-  rejects an empty string outright (`"response" is not allowed to be
-  empty`). Send a single space (`' '`) as a placeholder instead, and
-  re-run the auction with the real `response` text once your reply lands
-  if you want that later impression to reflect it.
-- **This block is additive, not exclusive.** Thrad still needs its own
-  `userId` field independently (see above) — a chat-native placement
-  commonly runs both Thrad and Imprezia in the same auction, each reading
-  its own bidder ext block, same as Adform.
+- **Never send Imprezia's `response` as an empty string.** Your ad slot's
+  auction typically fires as soon as the user submits a prompt, before
+  your assistant has replied — so there's no assistant message in
+  `messages` yet. Imprezia's API rejects an empty string outright
+  (`"response" is not allowed to be empty`); the helper falls back to a
+  single space (`' '`) whenever there's no assistant turn. Re-run the
+  auction with the real reply once it lands if you want that later
+  impression to reflect it.
+- **`userId` needs to be genuinely stable, and you own generating it.**
+  Unlike the web bundle, which auto-generates and persists one when
+  omitted, there's no bundle here to do that for you — generate one
+  yourself (e.g. a UUID per visitor) and keep sending the same value for
+  the same person across auctions, the same way `chatId`/`userId` persist
+  across turns on the web.
 
-Omit the whole `imprezia` block for a placement that isn't provisioned
-with Imprezia — sending it to a placement without Imprezia configured is
-harmless (PBS ignores bidder ext blocks for bidders not on the imp), but
-there's no reason to build it if you don't need it.
+Omit the `bidder` key (or the whole helper call) for a placement that
+isn't provisioned with Thrad or Imprezia — PBS ignores bidder ext blocks
+for bidders not on the imp, but there's no reason to build one you don't
+need.
 
 There's no server-side equivalent of the web guide's `hashedEmail`
 field today — it only affects Gravity, which is currently deactivated
