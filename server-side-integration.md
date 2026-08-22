@@ -36,8 +36,10 @@ places:
 
 Complete, runnable examples in three languages. Each builds the same
 request: an OpenRTB2 `site` object, your placement's config ID, your
-account's auction stored request ID, and (for Thrad-backed native
-placements) a per-user identifier.
+account's auction stored request ID, and — for native placements — the
+per-auction fields our native demand partners need (a per-user identifier
+for Thrad; the conversation text for Imprezia, our chat-context demand —
+see "Contextual / chat-native ads" below).
 
 **Node.js** (no dependencies — uses the built-in `fetch`):
 
@@ -69,7 +71,17 @@ async function runAuction() {
         ext: {
           prebid: {
             storedrequest: { id: NATIVE_CONFIG_ID },
-            bidder: { thrad: { userId: 'stable-per-user-id' } },
+            bidder: {
+              thrad: { userId: 'stable-per-user-id' },
+              // Only if your placement is provisioned with Imprezia
+              // (chat-context demand) — see "Contextual / chat-native
+              // ads" below. Omit this block entirely for a placement
+              // without Imprezia.
+              imprezia: {
+                request: "user's current message",
+                response: ' ', // ' ' placeholder until an assistant reply exists — never ''
+              },
+            },
           },
         },
       },
@@ -141,6 +153,13 @@ func main() {
 						"storedrequest": map[string]any{"id": nativeConfigID},
 						"bidder": map[string]any{
 							"thrad": map[string]any{"userId": "stable-per-user-id"},
+							// Only if your placement is provisioned with Imprezia (chat-context
+							// demand) — see "Contextual / chat-native ads" below. Omit for a
+							// placement without Imprezia.
+							"imprezia": map[string]any{
+								"request":  "user's current message",
+								"response": " ", // placeholder until an assistant reply exists — never ""
+							},
 						},
 					},
 				},
@@ -206,7 +225,13 @@ public class Example {
                 + "\"native\":{\"request\":" + jsonString(NATIVE_REQUEST) + ",\"ver\":\"1.2\"},"
                 + "\"ext\":{\"prebid\":{"
                 + "\"storedrequest\":{\"id\":\"" + NATIVE_CONFIG_ID + "\"},"
-                + "\"bidder\":{\"thrad\":{\"userId\":\"stable-per-user-id\"}}"
+                // "imprezia" is only needed if your placement is provisioned with
+                // Imprezia (chat-context demand) — see "Contextual / chat-native
+                // ads" below. Drop it for a placement without Imprezia.
+                + "\"bidder\":{"
+                + "\"thrad\":{\"userId\":\"stable-per-user-id\"},"
+                + "\"imprezia\":{\"request\":\"user's current message\",\"response\":\" \"}"
+                + "}"
                 + "}}"
                 + "}],"
                 + "\"ext\":{\"prebid\":{\"storedrequest\":{\"id\":\"" + AUCTION_STORED_REQUEST_ID + "\"}}},"
@@ -235,8 +260,46 @@ public class Example {
 ```
 
 A banner placement's request is simpler — swap the `native` object for
-`"banner": {"w": 300, "h": 250}` and drop the `thrad` userId (only native
-placements route through Thrad today).
+`"banner": {"w": 300, "h": 250}` and drop the `thrad`/`imprezia` blocks
+(only native placements route through Thrad or Imprezia today).
+
+### Contextual / chat-native ads
+
+If your site or app is an AI assistant or chat interface, this is the
+single biggest lever on ad relevance and yield — the equivalent of the
+web `<script>` integration's `window.tpc.data.messages`. There's no
+`messages` array at the OpenRTB2 layer; instead, pass the conversation
+turn directly through Imprezia's per-auction bidder ext fields on the
+native imp (as shown in the examples above):
+
+| Field | Value |
+|---|---|
+| `ext.prebid.bidder.imprezia.request` | The user's current message/query |
+| `ext.prebid.bidder.imprezia.response` | The AI-generated reply being monetized |
+
+Two things that will bite you if you skip them:
+
+- **Never send `response` as an empty string.** Your ad slot's auction
+  typically fires as soon as the user submits a prompt, before your
+  assistant has replied — so there's no response text yet. Imprezia's API
+  rejects an empty string outright (`"response" is not allowed to be
+  empty`). Send a single space (`' '`) as a placeholder instead, and
+  re-run the auction with the real `response` text once your reply lands
+  if you want that later impression to reflect it.
+- **This block is additive, not exclusive.** Thrad still needs its own
+  `userId` field independently (see above) — a chat-native placement
+  commonly runs both Thrad and Imprezia in the same auction, each reading
+  its own bidder ext block, same as Adform.
+
+Omit the whole `imprezia` block for a placement that isn't provisioned
+with Imprezia — sending it to a placement without Imprezia configured is
+harmless (PBS ignores bidder ext blocks for bidders not on the imp), but
+there's no reason to build it if you don't need it.
+
+There's no server-side equivalent of the web guide's `hashedEmail`
+field today — it only affects Gravity, which is currently deactivated
+platform-wide. Ask your account manager if you need logged-in-user
+matching for a server-side integration.
 
 ### 2. Render the winning bid
 
@@ -309,6 +372,26 @@ Banner (display) and native (sponsored card — title/image/description/
 sponsor/CTA, the 5-asset schema shown above) are supported. Video is not
 yet available for server-side; ask your account manager if you need it.
 
+## Timeouts
+
+Our Prebid Server's own auction budget is **2500ms** — it queries every
+demand partner on the imp in parallel and returns whatever bids have come
+back by then. Set your own HTTP client timeout comfortably above that, so
+you're not cutting the auction off early: **3500ms or more** is a safe
+floor (the same failsafe margin the web bundle uses). A slow demand
+partner costs you that partner's bid, not the whole auction — the
+response still comes back with whatever did bid in time.
+
+## Refreshing ads
+
+The web bundle shows up to `adMaxRefresh` sequential ads per session (3 by
+default) with a pause between them. There's no equivalent built into the
+Prebid Server endpoint itself — a "refresh" from a server-side integration
+is just running the auction request again with a new `id`, on whatever
+cadence and cap fits your product (e.g. only after the current ad's
+`adDisplaySeconds`-equivalent has elapsed on your side, and stopping after
+your own per-session cap). You own that pacing logic entirely.
+
 ## Consent
 
 Set these fields yourself from your own consent state (CMP, cookie banner,
@@ -325,14 +408,47 @@ If you omit these, our server applies a default "no restrictions" posture
 — useful for getting started, but you should pass your own real consent
 signals once your consent flow is in place.
 
+For testing only — illustrative TCF 2.3 and GPP (USNAT, section 7)
+strings, the same ones from the web integration guide:
+
+| | String |
+|---|---|
+| TCF — all purposes/vendors consented | `CQJz4oAQJz4oAGXABBENBdFsAP_gAEPgAAATIIDoBJCoAAAAAA` |
+| TCF — no consent | `CQAAAAAAAAAAAAAAAABzAAAAAAAAAAAAAAAAAAAAAAAAAAAA` |
+| GPP — all sharing permitted | `DBABBg==` (pass `regs.gpp_sid: [7]` alongside it) |
+| GPP — all opt-outs set | `DBABjw==` (pass `regs.gpp_sid: [7]` alongside it) |
+
+Generate real strings with your CMP or a TCF/GPP-compliant encoder library
+such as [@iabtcf/encoder](https://www.npmjs.com/package/@iabtcf/encoder)
+for production use — these are for testing only.
+
+## Reporting API
+
+Want your revenue data programmatically? See the
+[Reporting API Guide](/public-docs/reporting-api/) — a simple REST API
+authenticated with an API key your account manager can issue you, covering
+the same summary/timeseries/breakdown data shown in the dashboard. It's
+the same API regardless of which integration path (web, mobile SDK, or
+this one) drives the underlying traffic.
+
 ## Troubleshooting
 
 ### No bid / empty `seatbid`
 
 A missing `seatbid` array is often a genuine no-fill, not an error — check
-`ext.errors` in the response first. A common cause for native placements:
-Thrad requires `ext.prebid.bidder.thrad.userId` on the imp; PBS returns a
-400 rejecting the whole imp if it's missing.
+`ext.errors` in the response first. Two common causes for native
+placements, with different blast radius:
+
+- **Thrad** requires `ext.prebid.bidder.thrad.userId` on the imp — if
+  it's missing, PBS returns a 400 rejecting the **whole imp** (every
+  bidder on it, not just Thrad).
+- **Imprezia** requires no field to avoid an error — a missing or empty
+  `ext.prebid.bidder.imprezia` block just means Imprezia quietly doesn't
+  bid, the rest of the auction proceeds normally. But if you *do* send
+  the block, `response` must never be `''` (empty string) — Imprezia's
+  API rejects that outright, taking only Imprezia's own bid down with it.
+  Send `' '` (a single space) as the pre-reply placeholder instead — see
+  "Contextual / chat-native ads" above.
 
 ### `Stored Request with ID=... not found` / `Stored Imp with ID=... not
 found`

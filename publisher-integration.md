@@ -349,7 +349,7 @@ the dashboard.
 
 - The bundle loads **asynchronously** (`<script async>`) — it does not block page rendering
 - Auctions start as soon as the bundle parses, overlapping with the rest of the page load
-- Default bid timeout: 1500ms
+- Default bid timeout: 2500ms
 - Failsafe timeout: 3500ms — render completes even if the auction hangs
 
 For best performance, place the `<script>` tag in `<head>` with `async`.
