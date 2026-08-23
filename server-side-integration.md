@@ -337,12 +337,14 @@ integrations start from the same shape, sent as one object under
 | `userId` | A stable per-user identifier |
 | `sessionId` | A stable per-session/per-conversation identifier |
 | `messages` | The growing back-and-forth: `{ role: 'user' \| 'assistant', content }` |
+| `deviceContext` | Optional: `{ deviceType, viewportWidth, viewportHeight }` — `deviceType` is `desktop` \| `mobile` \| `tablet`, viewports are CSS pixels of the area where the ad will render. Include it if you know it |
 
 Send the object as-is — there's no per-field mapping to do yourself. Our
 server resolves it into whatever real demand is actually configured for
 the placement; a placement with no content-driven demand on it simply
-ignores the block. Two things that matter for getting full value out of
-it:
+ignores the block, and `deviceContext` specifically only matters to
+demand that actually uses it — omitting it never breaks a placement that
+doesn't. Two things that matter for getting full value out of it:
 
 - **`userId`/`sessionId` need to be genuinely stable, and you own
   generating them.** Unlike the web bundle, which auto-generates and
@@ -415,18 +417,83 @@ function renderNative(bid, container) {
 
   container.appendChild(root);
   fireTrackers(native.imptrackers);
+  deliverExtraMeasurement(native, 1); // insertion — see below
+  onceViewable(root, () => deliverExtraMeasurement(native, 2)); // viewable — see below
 }
 
 function fireTrackers(urls) {
   if (!urls) return;
   for (const url of urls) new Image().src = url;
 }
+
+// Some demand carries measurement beyond imptrackers/clicktrackers: an
+// `eventtrackers` array (`{event, method, url}` — event 1 = insertion,
+// event 2 = >=50%-viewable-for-1s) and/or a top-level `ext` object whose
+// values may include their own `beaconBaseUrl`. Both are optional and
+// additive — a bid without either needs nothing extra, and this code
+// never assumes which (if any) demand behind a placement uses them.
+function deliverExtraMeasurement(native, eventCode) {
+  const urls = (native.eventtrackers || [])
+    .filter(t => t.event === eventCode)
+    .map(t => t.url);
+  fireTrackers(urls);
+
+  const beaconMeta = Object.values(native.ext || {}).find(v => v && v.beaconBaseUrl);
+  if (!beaconMeta) return;
+  const eventType = eventCode === 1 ? 'sdk_impression_inserted' : 'sdk_impression';
+  const payload = {
+    eventId: `evt_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
+    eventType,
+    requestId: beaconMeta.requestId,
+    sdkVersion: 'server-side-integration/1.0.0',
+    clientTimestamp: new Date().toISOString(),
+    serverTimestamp: beaconMeta.servedAt,
+    generatedUrl: native.link?.url,
+    impressionUuid: beaconMeta.impressionUuid,
+    placementType: 'uicard',
+    publisherId: beaconMeta.publisherId,
+    sessionId: beaconMeta.sessionId
+  };
+  if (beaconMeta.beaconToken) {
+    payload.impressionToken = beaconMeta.beaconToken.token;
+    payload.tokenIssuedAt = beaconMeta.beaconToken.issuedAt;
+    payload.tokenKid = beaconMeta.beaconToken.kid;
+  }
+  fetch(`${beaconMeta.beaconBaseUrl}/v1/events/sdk-impression`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    keepalive: true,
+    body: JSON.stringify(payload)
+  });
+}
+
+// Fires `callback` once when `el` has been >=50% visible for 1
+// continuous second — MRC-standard viewability, required before firing
+// the viewable-only measurement above.
+function onceViewable(el, callback) {
+  let fired = false, timer = null;
+  const observer = new IntersectionObserver(entries => {
+    for (const entry of entries) {
+      if (entry.intersectionRatio >= 0.5) {
+        if (!timer) timer = setTimeout(() => { fired = true; callback(); observer.disconnect(); }, 1000);
+      } else if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    }
+  }, { threshold: 0.5 });
+  observer.observe(el);
+}
 ```
 
-Both functions fire tracking pixels for you (`imptrackers` on render,
-`clicktrackers` on click) — you don't need Prebid.js or any other library
-on the page for this integration path; these two functions are the whole
-rendering layer.
+Together these functions fire everything a rendered bid ever needs:
+tracking pixels (`imptrackers` on render, `clicktrackers` on click) plus
+the eventtrackers/beacon handling above for demand that requires it — you
+don't need Prebid.js or any other library on the page for this
+integration path; this is the whole rendering layer. `deliverExtraMeasurement`
+and `onceViewable` are safe to leave in permanently: they're no-ops for
+any bid that doesn't carry `eventtrackers`/a `beaconBaseUrl`, so nothing
+about this changes if the demand behind a placement changes.
 
 ## Ad formats
 
