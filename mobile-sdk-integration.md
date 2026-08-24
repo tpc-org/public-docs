@@ -262,9 +262,15 @@ handling covers — inspect the raw native response for an `eventtrackers`
 array (`{event, method, url}` — event 1 fires once at insertion, event 2
 fires once at MRC-standard viewability: >=50% of the creative visible for
 1 continuous second) and a top-level `ext` object whose values may include
-their own `beaconBaseUrl`. Both are optional and additive — a bid without
-either needs nothing extra, and this code never assumes which (if any)
-demand behind a placement uses them. **This section is unverified** — the
+their own `beaconBaseUrl`. Measurement can also arrive via a frame URL
+instead of the array (`ext.<partner>.impressionFrameUrl`/
+`viewabilityFrameUrl`) — the two channels are mutually exclusive per
+serve, so check for the frame field first and only fall back to the
+array when it's absent; a frame URL must be embedded (e.g. a hidden
+WebView), never fetched directly, since the pixel only counts when
+actually rendered as a document. All of this is optional and additive —
+a bid without any of it needs nothing extra, and this code never assumes
+which (if any) demand behind a placement uses them. **This section is unverified** — the
 Prebid Mobile SDK's own native ad result type is not confirmed to expose
 the raw `ext`/`eventtrackers` fields from the underlying OpenRTB response
 (no app exists in this workspace to check against); treat the sketch
@@ -276,14 +282,41 @@ of the request side.
 **iOS (Swift), sketch:**
 
 ```swift
-func deliverExtraMeasurement(native: [String: Any], eventCode: Int) {
-    let eventTrackers = native["eventtrackers"] as? [[String: Any]] ?? []
-    let urls = eventTrackers.filter { ($0["event"] as? Int) == eventCode }.compactMap { $0["url"] as? String }
-    for url in urls { URLSession.shared.dataTask(with: URL(string: url)!).resume() }
+// Never load a frame URL via URLSession — it only counts when actually
+// rendered as a document. Use a hidden WKWebView (1x1, off-screen) so
+// the pixel fires the same way a browser's iframe would; a plain data
+// task would just fetch the bytes without "showing" it, which some
+// measurement vendors don't count as delivered.
+func embedTrackerFrame(url: String) {
+    let webView = WKWebView(frame: CGRect(x: -1000, y: -1000, width: 1, height: 1))
+    webView.load(URLRequest(url: URL(string: url)!))
+    // Retain webView (e.g. in an instance array) until its didFinish
+    // delegate callback fires, then release it — omitted here for brevity.
+}
 
+func deliverExtraMeasurement(native: [String: Any], eventCode: Int) {
     guard let ext = native["ext"] as? [String: Any],
           let beaconMeta = ext.values.compactMap({ $0 as? [String: Any] }).first(where: { $0["beaconBaseUrl"] != nil })
-    else { return }
+    else {
+        // No beacon metadata at all -- still fire any plain array trackers.
+        let eventTrackers = native["eventtrackers"] as? [[String: Any]] ?? []
+        let urls = eventTrackers.filter { ($0["event"] as? Int) == eventCode }.compactMap { $0["url"] as? String }
+        for url in urls { URLSession.shared.dataTask(with: URL(string: url)!).resume() }
+        return
+    }
+
+    // Two mutually-exclusive channels depending on the serve: a frame URL
+    // (impressionFrameUrl/viewabilityFrameUrl) that must be embedded, or
+    // the plain eventtrackers array. Check the frame field first.
+    let frameKey = eventCode == 1 ? "impressionFrameUrl" : "viewabilityFrameUrl"
+    if let frameUrl = beaconMeta[frameKey] as? String {
+        embedTrackerFrame(url: frameUrl)
+    } else {
+        let eventTrackers = native["eventtrackers"] as? [[String: Any]] ?? []
+        let urls = eventTrackers.filter { ($0["event"] as? Int) == eventCode }.compactMap { $0["url"] as? String }
+        for url in urls { URLSession.shared.dataTask(with: URL(string: url)!).resume() }
+    }
+
     let eventType = eventCode == 1 ? "sdk_impression_inserted" : "sdk_impression"
     var payload: [String: Any] = [
         "eventId": "evt_\(Int(Date().timeIntervalSince1970 * 1000))_\(Int.random(in: 0...999999))",
@@ -319,19 +352,41 @@ func deliverExtraMeasurement(native: [String: Any], eventCode: Int) {
 **Android (Kotlin), sketch:**
 
 ```kotlin
-fun deliverExtraMeasurement(native: JSONObject, eventCode: Int) {
-    val eventTrackers = native.optJSONArray("eventtrackers")
-    if (eventTrackers != null) {
-        for (i in 0 until eventTrackers.length()) {
-            val t = eventTrackers.getJSONObject(i)
-            if (t.optInt("event") == eventCode) fireUrl(t.getString("url"))
+// Never fetch a frame URL as plain bytes -- it only counts when actually
+// rendered as a document. A hidden, off-screen WebView (1x1) fires the
+// pixel the same way a browser's iframe would.
+fun embedTrackerFrame(context: Context, url: String) {
+    val webView = WebView(context).apply {
+        layoutParams = ViewGroup.LayoutParams(1, 1)
+        loadUrl(url)
+    }
+    // Attach webView to an off-screen container view until its
+    // WebViewClient.onPageFinished fires, then detach/destroy it --
+    // omitted here for brevity.
+}
+
+fun deliverExtraMeasurement(native: JSONObject, eventCode: Int, context: Context) {
+    fun fireArrayTrackers() {
+        val eventTrackers = native.optJSONArray("eventtrackers")
+        if (eventTrackers != null) {
+            for (i in 0 until eventTrackers.length()) {
+                val t = eventTrackers.getJSONObject(i)
+                if (t.optInt("event") == eventCode) fireUrl(t.getString("url"))
+            }
         }
     }
 
-    val ext = native.optJSONObject("ext") ?: return
+    val ext = native.optJSONObject("ext")
     var beaconMeta: JSONObject? = null
-    ext.keys().forEach { k -> if (ext.optJSONObject(k)?.has("beaconBaseUrl") == true) beaconMeta = ext.getJSONObject(k) }
-    val meta = beaconMeta ?: return
+    ext?.keys()?.forEach { k -> if (ext.optJSONObject(k)?.has("beaconBaseUrl") == true) beaconMeta = ext.getJSONObject(k) }
+    val meta = beaconMeta ?: run { fireArrayTrackers(); return }
+
+    // Two mutually-exclusive channels depending on the serve: a frame URL
+    // (impressionFrameUrl/viewabilityFrameUrl) that must be embedded, or
+    // the plain eventtrackers array. Check the frame field first.
+    val frameKey = if (eventCode == 1) "impressionFrameUrl" else "viewabilityFrameUrl"
+    val frameUrl = meta.optString(frameKey).takeIf { it.isNotEmpty() }
+    if (frameUrl != null) embedTrackerFrame(context, frameUrl) else fireArrayTrackers()
 
     val eventType = if (eventCode == 1) "sdk_impression_inserted" else "sdk_impression"
     val payload = JSONObject()
@@ -353,12 +408,12 @@ fun deliverExtraMeasurement(native: JSONObject, eventCode: Int) {
     }
     postJson("${meta.getString("beaconBaseUrl")}/v1/events/sdk-impression", payload)
 }
-// Call deliverExtraMeasurement(native, eventCode = 1) once at insertion,
-// and again with eventCode = 2 once you've independently confirmed >=50%
-// viewability for 1 continuous second (the SDK may already track
-// viewability for its own billing — reuse that signal if so, rather than
-// building a second observer). fireUrl/postJson are your own thin
-// GET/POST helpers, omitted here.
+// Call deliverExtraMeasurement(native, eventCode = 1, context) once at
+// insertion, and again with eventCode = 2 once you've independently
+// confirmed >=50% viewability for 1 continuous second (the SDK may
+// already track viewability for its own billing — reuse that signal if
+// so, rather than building a second observer). fireUrl/postJson are your
+// own thin GET/POST helpers, omitted here.
 ```
 
 ### Validating the merge landed correctly

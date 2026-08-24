@@ -426,19 +426,44 @@ function fireTrackers(urls) {
   for (const url of urls) new Image().src = url;
 }
 
+// Never fetch() a frame URL — it only counts when a browser actually
+// renders it as a document. One-shot: a later load of the same URL
+// returns an empty document, so a re-render can't double-count.
+function embedTrackerFrame(src) {
+  const frame = document.createElement('iframe');
+  frame.src = src;
+  frame.width = '1';
+  frame.height = '1';
+  frame.style.display = 'none';
+  document.body.appendChild(frame);
+  frame.addEventListener('load', () => setTimeout(() => frame.remove(), 3000));
+}
+
 // Some demand carries measurement beyond imptrackers/clicktrackers: an
 // `eventtrackers` array (`{event, method, url}` — event 1 = insertion,
 // event 2 = >=50%-viewable-for-1s) and/or a top-level `ext` object whose
 // values may include their own `beaconBaseUrl`. Both are optional and
 // additive — a bid without either needs nothing extra, and this code
 // never assumes which (if any) demand behind a placement uses them.
+//
+// Measurement can arrive via TWO mutually-exclusive channels depending
+// on the serve: the `eventtrackers` array above, OR a frame URL
+// (`ext.<partner>.impressionFrameUrl`/`viewabilityFrameUrl`) that must
+// be embedded as a hidden iframe instead — never fetched directly, since
+// the pixels only fire when a browser actually renders the document.
+// Check the frame field first; fall back to the array only when it's
+// absent, so a bid using one channel is never double-delivered via both.
 function deliverExtraMeasurement(native, eventCode) {
-  const urls = (native.eventtrackers || [])
-    .filter(t => t.event === eventCode)
-    .map(t => t.url);
-  fireTrackers(urls);
-
   const beaconMeta = Object.values(native.ext || {}).find(v => v && v.beaconBaseUrl);
+  const frameUrl = beaconMeta && (eventCode === 1 ? beaconMeta.impressionFrameUrl : beaconMeta.viewabilityFrameUrl);
+  if (frameUrl) {
+    embedTrackerFrame(frameUrl);
+  } else {
+    const urls = (native.eventtrackers || [])
+      .filter(t => t.event === eventCode)
+      .map(t => t.url);
+    fireTrackers(urls);
+  }
   if (!beaconMeta) return;
   const eventType = eventCode === 1 ? 'sdk_impression_inserted' : 'sdk_impression';
   const payload = {
@@ -487,13 +512,14 @@ function onceViewable(el, callback) {
 ```
 
 Together these functions fire everything a rendered bid ever needs:
-tracking pixels (`imptrackers` on render, `clicktrackers` on click) plus
-the eventtrackers/beacon handling above for demand that requires it — you
-don't need Prebid.js or any other library on the page for this
-integration path; this is the whole rendering layer. `deliverExtraMeasurement`
-and `onceViewable` are safe to leave in permanently: they're no-ops for
-any bid that doesn't carry `eventtrackers`/a `beaconBaseUrl`, so nothing
-about this changes if the demand behind a placement changes.
+tracking pixels (`imptrackers` on render, `clicktrackers` on click), the
+frame-or-array eventtrackers channel, and the beacon handling above for
+demand that requires it — you don't need Prebid.js or any other library
+on the page for this integration path; this is the whole rendering
+layer. `deliverExtraMeasurement` and `onceViewable` are safe to leave in
+permanently: they're no-ops for any bid that doesn't carry
+`eventtrackers`/a `beaconBaseUrl`, so nothing about this changes if the
+demand behind a placement changes.
 
 ## Ad formats
 
