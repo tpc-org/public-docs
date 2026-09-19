@@ -325,6 +325,47 @@ If you omit these, our server applies a default "no restrictions" posture
 — useful for getting started, but you should pass your own real consent
 signals once your consent flow is in place.
 
+## Testing your integration
+
+Need a deterministic, realistic-looking bid to validate your
+parsing/rendering pipeline end-to-end — without depending on live
+demand-partner economics, which can legitimately no-fill on arbitrary
+test traffic? Add OpenRTB's standard `test: 1` field to your request,
+plus `bidder.tpctest` on the imp you want a guaranteed bid for:
+
+```json
+{
+  "test": 1,
+  "imp": [{
+    "id": "1",
+    "native": { "request": "...", "ver": "1.2" },
+    "ext": {
+      "prebid": {
+        "storedrequest": { "id": "<your-config-id>" },
+        "bidder": { "tpctest": {} }
+      }
+    }
+  }],
+  "ext": { "prebid": { "storedrequest": { "id": "<your-auction-stored-request-id>" } } }
+}
+```
+
+This works against your real, already-provisioned placement — no
+separate test config ID needed. `bidder.tpctest` merges in alongside
+whatever real demand is already configured there (Thrad/Imprezia/etc.),
+so you can validate your own pipeline without touching your production
+config or waiting on real fill.
+
+- Returns a fixed `$5.00` CPM bid with every asset your native request
+  declares populated with clearly-labeled placeholder content
+  (title/image/data) — enough to exercise your full asset-mapping code,
+  not just whatever one bidder you happen to be testing against.
+- **Only fires when `test: 1` is present.** Sending `bidder.tpctest`
+  without `test: 1` is a safe no-op — no bid, not a real one.
+- This traffic never counts toward your real "Requests"/"Bid Req"
+  reporting numbers, so testing against your production placement's
+  config ID doesn't skew your dashboard.
+
 ## Troubleshooting
 
 ### No bid / empty `seatbid`
