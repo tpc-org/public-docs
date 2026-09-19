@@ -586,7 +586,73 @@ the same summary/timeseries/breakdown data shown in the dashboard. It's
 the same API regardless of which integration path (web, mobile SDK, or
 this one) drives the underlying traffic.
 
+## Testing your integration
+
+Need a deterministic, realistic-looking bid to validate your
+parsing/rendering pipeline end-to-end — without depending on live
+demand-partner economics, which can legitimately no-fill on arbitrary
+test traffic? Add OpenRTB's standard `test: 1` field to your request,
+plus `bidder.tpctest` on the imp you want a guaranteed bid for:
+
+```json
+{
+  "test": 1,
+  "imp": [{
+    "id": "1",
+    "native": { "request": "...", "ver": "1.2" },
+    "ext": {
+      "prebid": {
+        "storedrequest": { "id": "<your-config-id>" },
+        "bidder": { "tpctest": {} }
+      }
+    }
+  }],
+  "ext": { "prebid": { "storedrequest": { "id": "<your-auction-stored-request-id>" } } }
+}
+```
+
+This works against your real, already-provisioned placement — no
+separate test config ID needed. `bidder.tpctest` merges in alongside
+whatever real demand is already configured there (Thrad/Imprezia/etc.),
+so you can validate your own pipeline without touching your production
+config or waiting on real fill.
+
+- Returns a fixed `$5.00` CPM bid with every asset your native request
+  declares populated with clearly-labeled placeholder content
+  (title/image/data) — enough to exercise your full asset-mapping code,
+  not just whatever one bidder you happen to be testing against.
+- **Only fires when `test: 1` is present.** Sending `bidder.tpctest`
+  without `test: 1` is a safe no-op: you'll get a harmless `code: 5`
+  error for `tpctest` in `ext.errors` (same shape as the `tpc` error
+  below) and no bid — not a real one.
+- This traffic never counts toward your real "Requests"/"Bid Req"
+  reporting numbers, so testing against your production placement's
+  config ID doesn't skew your dashboard.
+
 ## Troubleshooting
+
+### `tpc` bidder error in `ext.errors`
+
+If every response includes something like:
+
+```json
+{"tpc":[{"code":5,"message":"The adapter failed to generate any bid requests, but also failed to generate an error explaining why"}]}
+```
+
+that's expected, harmless noise — ignore it. `tpc` isn't a demand
+source; it's a routing stub PBS's bidder-name validation requires
+because this guide's own `ext.prebid.bidder.tpc` block (see "Contextual
+/ chat-native ads" above) uses the key `tpc`. That stub never makes any
+outbound call by design, so PBS's own generic "adapter produced no bid
+requests" message fires on every single request that includes it — real
+demand (Thrad/Imprezia/etc.) responds independently in the same
+`ext.errors`/`seatbid`, completely unaffected.
+
+Don't confuse this with `tpctest` (see "Testing your integration"
+above) — `tpc` is the always-present routing key your requests already
+carry as part of the normal integration; `tpctest` is a separate,
+opt-in synthetic bidder you add yourself only when you want a
+deterministic test bid.
 
 ### No bid / empty `seatbid`
 
