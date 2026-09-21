@@ -76,10 +76,17 @@ Totals broken out by placement.
 {
   "range": {"start": "2026-07-01", "end": "2026-07-29"},
   "by_placement": [
-    {"placement_id": 1, "placement_name": "Banner 300x250", "impressions": 17120, "clicks": 47, "net_revenue": 9.6}
+    {"placement_id": 1, "placement_name": "Banner 300x250", "stored_imp_id": "sayhola-60b4e117", "impressions": 17120, "clicks": 47, "net_revenue": 9.6}
   ]
 }
 ```
+
+`placement_id` and `placement_name` are internal to your Hola AI account
+(an opaque numeric ID and a display name) — if you need to match a row
+back to your own config, use `stored_imp_id` instead. That's the same
+per-placement config ID you use as `NATIVE_CONFIG_ID`/`imp[].ext.prebid.storedrequest.id`
+in the [Server-side Guide](/public-docs/server-side-integration/) and the
+publisher integration snippet.
 
 Revenue figures are always **net** (after take rate) — the same numbers
 you see in the dashboard UI.
