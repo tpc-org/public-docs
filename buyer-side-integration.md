@@ -2,19 +2,19 @@
 layout: page
 ---
 
-# TPC DSP — Buyer-side Integration Guide
+# Hola AI DSP — Buyer-side Integration Guide
 
 **[Buyer-side Integration Guide](/public-docs/buyer-side-integration/)** · [Support](#getting-started)
 
 ---
 
-This guide is for SSPs and exchanges that want to call TPC as a demand
-source — TPC as the *buyer*. You send us a native bid request, we run a
-real auction against our own connected demand, and we return a net bid
-in your format. This is a separate integration path from TPC's
-publisher-facing guides (server-side, web, mobile SDK) — those are for
-publishers running TPC's own ad tech; this one is for an SSP reselling
-into TPC.
+This guide is for SSPs and exchanges that want to call Hola AI as a
+demand source — Hola AI as the *buyer*. You send us a native bid
+request, we run a real auction against our own connected demand, and
+we return a net bid in your format. This is a separate integration
+path from Hola AI's publisher-facing guides (server-side, web, mobile
+SDK) — those are for publishers running Hola AI's own ad tech; this
+one is for an SSP reselling into Hola AI's DSP.
 
 ## Endpoint & authentication
 
@@ -27,7 +27,7 @@ into TPC.
 | Optional header | `x-openrtb-version: 2.6` — if sent, must be exactly `2.6` |
 | Max request size | 1 MB |
 
-Your token is issued by TPC out of band — never in a request body or
+Your token is issued by Hola AI out of band — never in a request body or
 URL. An alternative auth style (a shared identifier baked into the URL
 as a query parameter, no `Authorization` header) is also available on
 request if your platform doesn't support bearer tokens.
@@ -166,15 +166,15 @@ traffic spikes, ask us — the limit is configurable on our side.
 
 ## Getting started
 
-1. Contact TPC to request a credential and confirm your native asset
-   requirements.
+1. Contact your Hola AI account manager to request a credential and
+   confirm your native asset requirements.
 2. Review this guide with your integrating engineer.
 3. Run a real hand-built test request against the production endpoint
    — there is currently no separate staging environment, so coordinate
-   a live test window with TPC directly.
+   a live test window with Hola AI directly.
 4. Confirm a full round trip: a `200` bid, a fired `nurl`, and (once
    the impression is viewable) a fired `burl`.
 5. Ramp traffic gradually and watch fill rate before committing full
    volume.
 
-**Support:** martin@theproductcounsel.com
+**Support:** Contact your Hola AI account manager.

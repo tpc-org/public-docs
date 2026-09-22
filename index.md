@@ -16,9 +16,9 @@ Integration guides and technical references for publishers using Hola AI Ads.
 
 ## SSP / buyer-side documentation
 
-For SSPs and exchanges integrating TPC as a demand source — TPC as the
-buyer, not the publisher-facing side above.
+For SSPs and exchanges integrating Hola AI as a demand source — Hola
+AI as the buyer, not the publisher-facing side above.
 
 | Document | Description |
 |---|---|
-| [Buyer-side integration guide](buyer-side-integration) | How to call TPC's DSP endpoint as an SSP |
+| [Buyer-side integration guide](buyer-side-integration) | How to call the Hola AI DSP endpoint as an SSP |
