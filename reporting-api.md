@@ -70,19 +70,44 @@ Same totals, broken out by day.
 
 ### `GET /reporting/breakdown/`
 
-Totals broken out by placement.
+Totals broken out by placement. Match each row to your site using
+`stored_imp_id`.
 
 ```json
 {
-  "range": {"start": "2026-07-01", "end": "2026-07-29"},
+  "range": {"start": "2026-10-07", "end": "2026-10-07"},
   "by_placement": [
-    {"placement_id": 1, "placement_name": "Banner 300x250", "impressions": 17120, "clicks": 47, "net_revenue": 9.6}
+    {"placement_id": 30, "placement_name": "Native (38f6d896)", "stored_imp_id": "wonderwall-38f6d896", "impressions": 8, "clicks": 3, "net_revenue": 0.0672, "ctr": 0.375, "ecpm": 8.4},
+    {"placement_id": 31, "placement_name": "Native (4c4c401c)", "stored_imp_id": "knewz-4c4c401c", "impressions": 69, "clicks": 1, "net_revenue": 0.5796, "ctr": 0.014492753623188406, "ecpm": 8.4}
   ]
 }
 ```
 
 Revenue figures are always **net** (after take rate) — the same numbers
 you see in the dashboard UI.
+
+| Field | Meaning |
+|---|---|
+| `impressions` | Impressions reported by demand partners. A returned bid alone is not a measured impression. |
+| `clicks` | Clicks reported by demand partners. |
+| `net_revenue` | Revenue after Hola AI's take rate, in USD. |
+| `ctr` | `clicks / impressions`, a fraction; zero when there are no impressions. |
+| `ecpm` | `net_revenue / impressions × 1000`, in USD; zero when there are no impressions. |
+
+`ctr: 0.375` means **37.5%**, and `ecpm: 8.4` means **$8.40 net per
+1,000 impressions**. For a date range, each placement's rates are
+calculated from its totals for the whole range. To combine placements,
+calculate rates from summed clicks, impressions and net revenue rather
+than averaging placement rates.
+
+The placement breakdown does not expose request counts, `queries`, or
+fill rate. Contact your account manager to agree which request and
+response populations you need before interpreting those metrics.
+
+For a single UTC day, pass the same date as `start_date` and `end_date`.
+Repeated pulls return cumulative daily snapshots; replace the previously
+stored daily values rather than adding each snapshot. Recent partner
+reports can be restated; a scheduled pull does not guarantee finality.
 
 ## Rate limits
 
