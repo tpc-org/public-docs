@@ -80,13 +80,24 @@ Totals broken out by placement.
 {
   "range": {"start": "2026-07-01", "end": "2026-07-29"},
   "by_placement": [
-    {"placement_id": 1, "placement_name": "Banner 300x250", "impressions": 17120, "clicks": 47, "net_revenue": 9.6}
+    {"placement_id": 1, "placement_name": "Banner 300x250", "stored_imp_id": "publisher-banner", "impressions": 17120, "clicks": 47, "net_revenue": 9.6, "ctr": 0.002745, "ecpm": 0.561}
   ]
 }
 ```
 
 Revenue figures are always **net** (after take rate) — the same numbers
 you see in the dashboard UI.
+
+Match placements using `stored_imp_id`. Each placement includes `ctr`
+(`clicks / impressions`, a fraction) and net `ecpm`
+(`net_revenue / impressions × 1000`, in USD). Both are zero when
+impressions are zero. For example, 8 impressions, 3 clicks, and $0.0672
+net revenue produce `ctr: 0.375` (37.5%) and `ecpm: 8.4`.
+
+For a single UTC day, pass the same date as `start_date` and `end_date`.
+Repeated pulls return cumulative daily snapshots; replace the previously
+stored daily values rather than adding each snapshot. Recent partner
+reports can be restated; a scheduled pull does not guarantee finality.
 
 ## Summary and daily metric definitions
 
@@ -106,13 +117,14 @@ you see in the dashboard UI.
 **10%**. Example values above are rounded for readability. Period rates
 are calculated from period totals, not by averaging daily rates.
 
-Use the existing `ad_requests` field for placement-level request volume;
+Use the existing summary or timeseries `ad_requests` field for request volume;
 there is no `queries` field. Confirm whether your own "queries" metric
 counts placements or auction calls before mapping it to this API.
 
 These count and rate fields apply to summary and timeseries reports.
-The placement breakdown keeps its existing impression, click and revenue
-fields. Request counts and partner measurements come from separate
+The placement breakdown includes impressions, clicks, net revenue, CTR,
+and net eCPM. It does not expose request counts or fill rate.
+Request counts and partner measurements come from separate
 ingestion pipelines; recent days can be incomplete, and zero values do
 not guarantee that upstream reporting is complete.
 
