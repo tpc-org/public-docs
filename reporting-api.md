@@ -50,8 +50,8 @@ comparison.
 ```json
 {
   "range": {"start": "2026-07-01", "end": "2026-07-29"},
-  "current": {"impressions": 22250, "clicks": 79, "net_revenue": 14.608, "ctr": 0.00355, "ecpm": 0.657},
-  "previous": {"impressions": 0, "clicks": 0, "net_revenue": 0.0, "ctr": 0, "ecpm": 0}
+  "current": {"impressions": 22250, "clicks": 79, "net_revenue": 14.608, "ad_requests": 50000, "auctions": 25000, "bid_requests": 75000, "fill_rate": 0.445, "ctr": 0.00355, "ecpm": 0.657},
+  "previous": {"impressions": 0, "clicks": 0, "net_revenue": 0.0, "ad_requests": 0, "auctions": 0, "bid_requests": 0, "fill_rate": 0, "ctr": 0, "ecpm": 0}
 }
 ```
 
@@ -63,10 +63,14 @@ Same totals, broken out by day.
 {
   "range": {"start": "2026-07-01", "end": "2026-07-29"},
   "series": [
-    {"date": "2026-07-01", "impressions": 780, "clicks": 3, "net_revenue": 0.52}
+    {"date": "2026-07-01", "impressions": 780, "clicks": 3, "net_revenue": 0.52, "ad_requests": 2000, "auctions": 1000, "bid_requests": 3000, "fill_rate": 0.39, "ctr": 0.003846, "ecpm": 0.667}
   ]
 }
 ```
+
+The series includes every day in the requested range, including days with
+no records. Days with requests but no impressions retain their request
+counts and have zero fill rate, CTR and eCPM.
 
 ### `GET /reporting/breakdown/`
 
@@ -83,6 +87,34 @@ Totals broken out by placement.
 
 Revenue figures are always **net** (after take rate) — the same numbers
 you see in the dashboard UI.
+
+## Summary and daily metric definitions
+
+| Field | Meaning |
+|---|---|
+| `ad_requests` | Ad opportunities received by our ad server, counted per placement. |
+| `auctions` | Auction calls; one call can contain several placements, so this differs from `ad_requests`. |
+| `bid_requests` | Placement requests sent to configured demand partners, summed across partners. |
+| `impressions` | Impressions reported by demand partners. A returned bid alone is not a measured impression. |
+| `clicks` | Clicks reported by demand partners. |
+| `net_revenue` | Revenue after Hola AI's take rate, in USD. |
+| `fill_rate` | `impressions / ad_requests`, capped at `1`; zero when there are no ad requests. |
+| `ctr` | `clicks / impressions`; zero when there are no impressions. |
+| `ecpm` | `net_revenue / impressions × 1000`, in USD; zero when there are no impressions. |
+
+`ctr` and `fill_rate` are ratios, not percentage values: `0.10` means
+**10%**. Example values above are rounded for readability. Period rates
+are calculated from period totals, not by averaging daily rates.
+
+Use the existing `ad_requests` field for placement-level request volume;
+there is no `queries` field. Confirm whether your own "queries" metric
+counts placements or auction calls before mapping it to this API.
+
+These count and rate fields apply to summary and timeseries reports.
+The placement breakdown keeps its existing impression, click and revenue
+fields. Request counts and partner measurements come from separate
+ingestion pipelines; recent days can be incomplete, and zero values do
+not guarantee that upstream reporting is complete.
 
 ## Rate limits
 
