@@ -50,8 +50,8 @@ comparison.
 ```json
 {
   "range": {"start": "2026-07-01", "end": "2026-07-29"},
-  "current": {"impressions": 22250, "clicks": 79, "net_revenue": 14.608, "ad_requests": 50000, "auctions": 25000, "bid_requests": 75000, "fill_rate": 0.445, "ctr": 0.00355, "ecpm": 0.657},
-  "previous": {"impressions": 0, "clicks": 0, "net_revenue": 0.0, "ad_requests": 0, "auctions": 0, "bid_requests": 0, "fill_rate": 0, "ctr": 0, "ecpm": 0}
+  "current": {"impressions": 22250, "clicks": 79, "net_revenue": 14.608, "ctr": 0.00355, "ecpm": 0.657},
+  "previous": {"impressions": 0, "clicks": 0, "net_revenue": 0.0, "ctr": 0, "ecpm": 0}
 }
 ```
 
@@ -63,24 +63,22 @@ Same totals, broken out by day.
 {
   "range": {"start": "2026-07-01", "end": "2026-07-29"},
   "series": [
-    {"date": "2026-07-01", "impressions": 780, "clicks": 3, "net_revenue": 0.52, "ad_requests": 2000, "auctions": 1000, "bid_requests": 3000, "fill_rate": 0.39, "ctr": 0.003846, "ecpm": 0.667}
+    {"date": "2026-07-01", "impressions": 780, "clicks": 3, "net_revenue": 0.52}
   ]
 }
 ```
 
-The series includes every day in the requested range, including days with
-no records. Days with requests but no impressions retain their request
-counts and have zero fill rate, CTR and eCPM.
-
 ### `GET /reporting/breakdown/`
 
-Totals broken out by placement.
+Totals broken out by placement. Match each row to your site using
+`stored_imp_id`.
 
 ```json
 {
-  "range": {"start": "2026-07-01", "end": "2026-07-29"},
+  "range": {"start": "2026-10-07", "end": "2026-10-07"},
   "by_placement": [
-    {"placement_id": 1, "placement_name": "Banner 300x250", "stored_imp_id": "publisher-banner", "impressions": 17120, "clicks": 47, "net_revenue": 9.6, "ctr": 0.002745, "ecpm": 0.561}
+    {"placement_id": 30, "placement_name": "Native (38f6d896)", "stored_imp_id": "wonderwall-38f6d896", "impressions": 8, "clicks": 3, "net_revenue": 0.0672, "ctr": 0.375, "ecpm": 8.4},
+    {"placement_id": 31, "placement_name": "Native (4c4c401c)", "stored_imp_id": "knewz-4c4c401c", "impressions": 69, "clicks": 1, "net_revenue": 0.5796, "ctr": 0.014492753623188406, "ecpm": 8.4}
   ]
 }
 ```
@@ -88,45 +86,28 @@ Totals broken out by placement.
 Revenue figures are always **net** (after take rate) — the same numbers
 you see in the dashboard UI.
 
-Match placements using `stored_imp_id`. Each placement includes `ctr`
-(`clicks / impressions`, a fraction) and net `ecpm`
-(`net_revenue / impressions × 1000`, in USD). Both are zero when
-impressions are zero. For example, 8 impressions, 3 clicks, and $0.0672
-net revenue produce `ctr: 0.375` (37.5%) and `ecpm: 8.4`.
+| Field | Meaning |
+|---|---|
+| `impressions` | Impressions reported by demand partners. A returned bid alone is not a measured impression. |
+| `clicks` | Clicks reported by demand partners. |
+| `net_revenue` | Revenue after Hola AI's take rate, in USD. |
+| `ctr` | `clicks / impressions`, a fraction; zero when there are no impressions. |
+| `ecpm` | `net_revenue / impressions × 1000`, in USD; zero when there are no impressions. |
+
+`ctr: 0.375` means **37.5%**, and `ecpm: 8.4` means **$8.40 net per
+1,000 impressions**. For a date range, each placement's rates are
+calculated from its totals for the whole range. To combine placements,
+calculate rates from summed clicks, impressions and net revenue rather
+than averaging placement rates.
+
+The placement breakdown does not expose request counts, `queries`, or
+fill rate. Contact your account manager to agree which request and
+response populations you need before interpreting those metrics.
 
 For a single UTC day, pass the same date as `start_date` and `end_date`.
 Repeated pulls return cumulative daily snapshots; replace the previously
 stored daily values rather than adding each snapshot. Recent partner
 reports can be restated; a scheduled pull does not guarantee finality.
-
-## Summary and daily metric definitions
-
-| Field | Meaning |
-|---|---|
-| `ad_requests` | Ad opportunities received by our ad server, counted per placement. |
-| `auctions` | Auction calls; one call can contain several placements, so this differs from `ad_requests`. |
-| `bid_requests` | Placement requests sent to configured demand partners, summed across partners. |
-| `impressions` | Impressions reported by demand partners. A returned bid alone is not a measured impression. |
-| `clicks` | Clicks reported by demand partners. |
-| `net_revenue` | Revenue after Hola AI's take rate, in USD. |
-| `fill_rate` | `impressions / ad_requests`, capped at `1`; zero when there are no ad requests. |
-| `ctr` | `clicks / impressions`; zero when there are no impressions. |
-| `ecpm` | `net_revenue / impressions × 1000`, in USD; zero when there are no impressions. |
-
-`ctr` and `fill_rate` are ratios, not percentage values: `0.10` means
-**10%**. Example values above are rounded for readability. Period rates
-are calculated from period totals, not by averaging daily rates.
-
-Use the existing summary or timeseries `ad_requests` field for request volume;
-there is no `queries` field. Confirm whether your own "queries" metric
-counts placements or auction calls before mapping it to this API.
-
-These count and rate fields apply to summary and timeseries reports.
-The placement breakdown includes impressions, clicks, net revenue, CTR,
-and net eCPM. It does not expose request counts or fill rate.
-Request counts and partner measurements come from separate
-ingestion pipelines; recent days can be incomplete, and zero values do
-not guarantee that upstream reporting is complete.
 
 ## Rate limits
 
