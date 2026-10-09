@@ -45,28 +45,33 @@ parameters:
 ### `GET /reporting/summary/`
 
 Totals for the period, plus the equivalent immediately-preceding period for
-comparison.
+comparison. The example below is illustrative; rates are rounded.
 
 ```json
 {
   "range": {"start": "2026-07-01", "end": "2026-07-29"},
-  "current": {"impressions": 22250, "clicks": 79, "net_revenue": 14.608, "ctr": 0.00355, "ecpm": 0.657},
-  "previous": {"impressions": 0, "clicks": 0, "net_revenue": 0.0, "ctr": 0, "ecpm": 0}
+  "current": {"impressions": 22250, "clicks": 79, "net_revenue": 14.608, "ad_requests": 50000, "auctions": 25000, "bid_requests": 75000, "fill_rate": 0.445, "ctr": 0.00355, "ecpm": 0.657},
+  "previous": {"impressions": 0, "clicks": 0, "net_revenue": 0.0, "ad_requests": 0, "auctions": 0, "bid_requests": 0, "fill_rate": 0, "ctr": 0, "ecpm": 0}
 }
 ```
 
 ### `GET /reporting/timeseries/`
 
-Same totals, broken out by day.
+Same totals, broken out by day. This illustrative example covers one day;
+rates are rounded.
 
 ```json
 {
-  "range": {"start": "2026-07-01", "end": "2026-07-29"},
+  "range": {"start": "2026-07-01", "end": "2026-07-01"},
   "series": [
-    {"date": "2026-07-01", "impressions": 780, "clicks": 3, "net_revenue": 0.52}
+    {"date": "2026-07-01", "impressions": 780, "clicks": 3, "net_revenue": 0.52, "ad_requests": 2000, "auctions": 1000, "bid_requests": 3000, "fill_rate": 0.39, "ctr": 0.003846, "ecpm": 0.667}
   ]
 }
 ```
+
+The series includes every day in the requested range. Days with requests
+but no impressions retain their counts and have zero fill rate, CTR and
+eCPM. Empty days return zeros.
 
 ### `GET /reporting/breakdown/`
 
@@ -108,6 +113,28 @@ For a single UTC day, pass the same date as `start_date` and `end_date`.
 Repeated pulls return cumulative daily snapshots; replace the previously
 stored daily values rather than adding each snapshot. Recent partner
 reports can be restated; a scheduled pull does not guarantee finality.
+
+## Summary and daily request counts
+
+The summary and timeseries endpoints also return these metrics:
+
+| Field | Meaning |
+|---|---|
+| `ad_requests` | Incoming ad opportunities counted per placement/format across our ad server regions, excluding shadow traffic. |
+| `auctions` | Incoming physical auction calls. One call can contain several placements/formats. This is not a count of auctions won. |
+| `bid_requests` | Placement requests sent to demand partners, summed across partners and regions, excluding shadow traffic. |
+| `fill_rate` | `impressions / ad_requests`, capped at `1`; zero when there are no ad requests. |
+
+`fill_rate` is a fraction: `0.10` means **10%**. It measures reported
+impressions against incoming ad opportunities. It does not measure the
+fraction of requests that received a priced bid. Period rates use period
+totals rather than an average of daily rates.
+
+There is no `queries` field. Agree which request population you need with
+your account manager before mapping your own terminology to these counts.
+Request counts and partner measurements arrive through separate ingestion
+pipelines; recent values may be incomplete. A zero does not guarantee
+that upstream reporting is complete.
 
 ## Rate limits
 
