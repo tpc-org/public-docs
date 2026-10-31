@@ -4,7 +4,7 @@ layout: page
 
 # Hola AI Ads — Publisher Integration Guide
 
-**[Integration Guide](/public-docs/publisher-integration/)** · [Mobile SDK Guide](/public-docs/mobile-sdk-integration/) · [Server-side Guide](/public-docs/server-side-integration/) · [Reporting API Guide](/public-docs/reporting-api/) · [Payment Details Guide](/public-docs/payment-details/) · [Changelog](#) · [Support](#contact)
+**[Integration Guide](/public-docs/publisher-integration/)** · [Mobile SDK Guide](/public-docs/mobile-sdk-integration/) · [Server-side Guide](/public-docs/server-side-integration/) · [Reporting API Guide](/public-docs/reporting-api/) · [ads.txt Guide](/public-docs/ads-txt/) · [Payment Details Guide](/public-docs/payment-details/) · [Changelog](#) · [Support](#contact)
 
 ---
 
@@ -335,6 +335,16 @@ placement ID) per domain under your agency, and provides the resulting
 `<div id="...">` for each site to paste in. Add as many domains as you
 operate; each one only ever needs its own single div, never any other
 domain's.
+
+## ads.txt
+
+Add an `/ads.txt` redirect to your root domain that points to
+`https://sayhola.ai/ads.txt`. Buyers use it to confirm that Hola AI is
+authorised to sell your inventory, and with a redirect you get our partner
+lines automatically, with no file to maintain. See the
+[ads.txt Guide](/public-docs/ads-txt/) for Apache, nginx and Cloudflare
+instructions. It also explains what to do if you already have an `ads.txt`
+with other partners.
 
 ## Reporting API
 

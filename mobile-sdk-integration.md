@@ -4,7 +4,7 @@ layout: page
 
 # Hola AI Ads — Mobile SDK Integration Guide
 
-**[Integration Guide](/public-docs/mobile-sdk-integration/)** · [Web Integration Guide](/public-docs/publisher-integration/) · [Server-side Guide](/public-docs/server-side-integration/) · [Reporting API Guide](/public-docs/reporting-api/) · [Payment Details Guide](/public-docs/payment-details/) · [Support](#contact)
+**[Integration Guide](/public-docs/mobile-sdk-integration/)** · [Web Integration Guide](/public-docs/publisher-integration/) · [Server-side Guide](/public-docs/server-side-integration/) · [Reporting API Guide](/public-docs/reporting-api/) · [ads.txt Guide](/public-docs/ads-txt/) · [Payment Details Guide](/public-docs/payment-details/) · [Support](#contact)
 
 ---
 
@@ -474,6 +474,14 @@ no native equivalent, so **in the Mobile SDK you may see the underlying
 demand source's name** directly in the bid response rather than a unified
 label. This is expected — not a bug — and doesn't affect rendering or
 revenue.
+
+## app-ads.txt
+
+If your app is listed on the App Store or Google Play, add an
+`/app-ads.txt` redirect pointing to `https://sayhola.ai/ads.txt`. Put it on
+the root of the **developer website** domain shown in your store listing.
+See the [ads.txt Guide](/public-docs/ads-txt/) for Apache, nginx and
+Cloudflare instructions.
 
 ## Performance notes
 
