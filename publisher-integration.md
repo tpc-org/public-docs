@@ -4,7 +4,7 @@ layout: page
 
 # Hola AI Ads — Publisher Integration Guide
 
-**[Integration Guide](/public-docs/publisher-integration/)** · [Mobile SDK Guide](/public-docs/mobile-sdk-integration/) · [Server-side Guide](/public-docs/server-side-integration/) · [Reporting API Guide](/public-docs/reporting-api/) · [ads.txt Guide](/public-docs/ads-txt/) · [Payment Details Guide](/public-docs/payment-details/) · [Changelog](#) · [Support](#contact)
+**[Integration Guide](publisher-integration.md)** · [Mobile SDK Guide](mobile-sdk-integration.md) · [Server-side Guide](server-side-integration.md) · [Reporting API Guide](reporting-api.md) · [ads.txt Guide](ads-txt.md) · [Payment Details Guide](payment-details.md) · [Changelog](#) · [Support](#contact)
 
 ---
 
@@ -342,14 +342,14 @@ Add an `/ads.txt` redirect to your root domain that points to
 `https://sayhola.ai/ads.txt`. Buyers use it to confirm that Hola AI is
 authorised to sell your inventory, and with a redirect you get our partner
 lines automatically, with no file to maintain. See the
-[ads.txt Guide](/public-docs/ads-txt/) for Apache, nginx and Cloudflare
+[ads.txt Guide](ads-txt.md) for Apache, nginx and Cloudflare
 instructions. It also explains what to do if you already have an `ads.txt`
 with other partners.
 
 ## Reporting API
 
 Want your revenue data programmatically instead of (or alongside) the
-dashboard UI? See the [Reporting API Guide](/public-docs/reporting-api/) —
+dashboard UI? See the [Reporting API Guide](reporting-api.md) —
 a simple REST API authenticated with an API key your account manager can
 issue you, covering the same summary/timeseries/breakdown data shown in
 the dashboard.

@@ -4,7 +4,7 @@ layout: page
 
 # Hola AI Ads — Mobile SDK Integration Guide
 
-**[Integration Guide](/public-docs/mobile-sdk-integration/)** · [Web Integration Guide](/public-docs/publisher-integration/) · [Server-side Guide](/public-docs/server-side-integration/) · [Reporting API Guide](/public-docs/reporting-api/) · [ads.txt Guide](/public-docs/ads-txt/) · [Payment Details Guide](/public-docs/payment-details/) · [Support](#contact)
+**[Integration Guide](mobile-sdk-integration.md)** · [Web Integration Guide](publisher-integration.md) · [Server-side Guide](server-side-integration.md) · [Reporting API Guide](reporting-api.md) · [ads.txt Guide](ads-txt.md) · [Payment Details Guide](payment-details.md) · [Support](#contact)
 
 ---
 
@@ -110,7 +110,7 @@ need it.
 If your app is an AI assistant or chat interface, this is the single
 biggest lever on ad relevance and yield for a native placement — the
 in-app counterpart of the web `<script>` integration's `window.tpc.data`
-and the [Server-side Guide](/public-docs/server-side-integration/)'s
+and the [Server-side Guide](server-side-integration.md)'s
 generic content object. All three integrations start from the same
 shape, sent as-is under `ext.prebid.bidder.tpc`: one object per
 conversation, with `accountId`, `userId` (a stable per-user identifier),
@@ -480,7 +480,7 @@ revenue.
 If your app is listed on the App Store or Google Play, add an
 `/app-ads.txt` redirect pointing to `https://sayhola.ai/ads.txt`. Put it on
 the root of the **developer website** domain shown in your store listing.
-See the [ads.txt Guide](/public-docs/ads-txt/) for Apache, nginx and
+See the [ads.txt Guide](ads-txt.md) for Apache, nginx and
 Cloudflare instructions.
 
 ## Performance notes

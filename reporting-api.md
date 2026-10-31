@@ -4,7 +4,7 @@ layout: page
 
 # Hola AI Ads — Reporting API Guide
 
-**[Reporting API Guide](/public-docs/reporting-api/)** · [Integration Guide](/public-docs/publisher-integration/) · [Mobile SDK Guide](/public-docs/mobile-sdk-integration/) · [Server-side Guide](/public-docs/server-side-integration/) · [ads.txt Guide](/public-docs/ads-txt/) · [Payment Details Guide](/public-docs/payment-details/) · [Support](#contact)
+**[Reporting API Guide](reporting-api.md)** · [Integration Guide](publisher-integration.md) · [Mobile SDK Guide](mobile-sdk-integration.md) · [Server-side Guide](server-side-integration.md) · [ads.txt Guide](ads-txt.md) · [Payment Details Guide](payment-details.md) · [Support](#contact)
 
 ---
 
@@ -85,7 +85,7 @@ Totals broken out by placement.
 (an opaque numeric ID and a display name) — if you need to match a row
 back to your own config, use `stored_imp_id` instead. That's the same
 per-placement config ID you use as `NATIVE_CONFIG_ID`/`imp[].ext.prebid.storedrequest.id`
-in the [Server-side Guide](/public-docs/server-side-integration/) and the
+in the [Server-side Guide](server-side-integration.md) and the
 publisher integration snippet.
 
 Revenue figures are always **net** (after take rate) — the same numbers

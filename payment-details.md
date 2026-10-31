@@ -4,7 +4,7 @@ layout: page
 
 # Hola AI Ads — Adding Your Payment Details
 
-**[Payment Details Guide](/public-docs/payment-details/)** · [Integration Guide](/public-docs/publisher-integration/) · [Mobile SDK Guide](/public-docs/mobile-sdk-integration/) · [Server-side Guide](/public-docs/server-side-integration/) · [Reporting API Guide](/public-docs/reporting-api/) · [ads.txt Guide](/public-docs/ads-txt/) · [Support](#contact)
+**[Payment Details Guide](payment-details.md)** · [Integration Guide](publisher-integration.md) · [Mobile SDK Guide](mobile-sdk-integration.md) · [Server-side Guide](server-side-integration.md) · [Reporting API Guide](reporting-api.md) · [ads.txt Guide](ads-txt.md) · [Support](#contact)
 
 ---
 

@@ -4,7 +4,7 @@ layout: page
 
 # Hola AI Ads — ads.txt and app-ads.txt Guide
 
-**[ads.txt Guide](/public-docs/ads-txt/)** · [Web Integration Guide](/public-docs/publisher-integration/) · [Mobile SDK Guide](/public-docs/mobile-sdk-integration/) · [Server-side Guide](/public-docs/server-side-integration/) · [Reporting API Guide](/public-docs/reporting-api/) · [Payment Details Guide](/public-docs/payment-details/) · [Support](#contact)
+**[ads.txt Guide](ads-txt.md)** · [Web Integration Guide](publisher-integration.md) · [Mobile SDK Guide](mobile-sdk-integration.md) · [Server-side Guide](server-side-integration.md) · [Reporting API Guide](reporting-api.md) · [Payment Details Guide](payment-details.md) · [Support](#contact)
 
 ---
 

@@ -4,7 +4,7 @@ layout: page
 
 # Hola AI Ads — Server-side Integration Guide
 
-**[Integration Guide](/public-docs/server-side-integration/)** · [Web Integration Guide](/public-docs/publisher-integration/) · [Mobile SDK Guide](/public-docs/mobile-sdk-integration/) · [Reporting API Guide](/public-docs/reporting-api/) · [ads.txt Guide](/public-docs/ads-txt/) · [Payment Details Guide](/public-docs/payment-details/) · [Support](#contact)
+**[Integration Guide](server-side-integration.md)** · [Web Integration Guide](publisher-integration.md) · [Mobile SDK Guide](mobile-sdk-integration.md) · [Reporting API Guide](reporting-api.md) · [ads.txt Guide](ads-txt.md) · [Payment Details Guide](payment-details.md) · [Support](#contact)
 
 ---
 
@@ -580,7 +580,7 @@ for production use — these are for testing only.
 ## Reporting API
 
 Want your revenue data programmatically? See the
-[Reporting API Guide](/public-docs/reporting-api/) — a simple REST API
+[Reporting API Guide](reporting-api.md) — a simple REST API
 authenticated with an API key your account manager can issue you, covering
 the same summary/timeseries/breakdown data shown in the dashboard. It's
 the same API regardless of which integration path (web, mobile SDK, or
