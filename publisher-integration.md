@@ -155,7 +155,7 @@ configuration handle all demand partner communication automatically.
 ### Logged-in users (optional)
 
 If a visitor is logged in and you know their email address, you can pass a
-**hashed** email to improve ad matching for one of our two demand partners:
+**hashed** email to improve ad matching for demand that supports it:
 
 ```html
 <script>

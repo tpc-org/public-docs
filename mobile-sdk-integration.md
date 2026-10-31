@@ -120,7 +120,10 @@ back-and-forth, `{role: 'user' | 'assistant', content}`), and optionally
 `deviceType` is `desktop` | `mobile` | `tablet`, viewports are CSS pixels
 of the area the ad renders into; include it if you know it, some demand
 uses it to better match device signals — omitting it never breaks a
-placement that doesn't need it). Our server resolves that object into
+placement that doesn't need it), and for logged-in users optionally
+`hashedEmail` (`SHA-256(email.trim().toLowerCase())` as lowercase hex —
+hash it in the app, never send a plain address; anything that isn't a
+64-character hex hash is dropped). Our server resolves that object into
 whatever real demand is actually configured for the placement — you
 never send anything demand-source-specific yourself. Where the
 integrations differ is only in *how* that
@@ -270,7 +273,15 @@ array when it's absent; a frame URL must be embedded (e.g. a hidden
 WebView), never fetched directly, since the pixel only counts when
 actually rendered as a document. All of this is optional and additive —
 a bid without any of it needs nothing extra, and this code never assumes
-which (if any) demand behind a placement uses them. **This section is unverified** — the
+which (if any) demand behind a placement uses them.
+
+**Win and loss notices.** A bid may also carry OpenRTB `burl` and `lurl`.
+Fire `burl` exactly once, when the ad renders (not again on viewability
+or refresh). If the bid is never shown — another ad was shown instead, or
+it went unused past its expiry — fire `lurl` once instead, replacing
+`${AUCTION_LOSS}` with `102` (lost to another ad) or `2` (expired). A bid
+gets one of the two, never both. Some demand counts these as its official
+win/loss record, so skipping them can cost you revenue. **This section is unverified** — the
 Prebid Mobile SDK's own native ad result type is not confirmed to expose
 the raw `ext`/`eventtrackers` fields from the underlying OpenRTB response
 (no app exists in this workspace to check against); treat the sketch

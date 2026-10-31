@@ -338,6 +338,7 @@ integrations start from the same shape, sent as one object under
 | `sessionId` | A stable per-session/per-conversation identifier |
 | `messages` | The growing back-and-forth: `{ role: 'user' \| 'assistant', content }` |
 | `deviceContext` | Optional: `{ deviceType, viewportWidth, viewportHeight }` — `deviceType` is `desktop` \| `mobile` \| `tablet`, viewports are CSS pixels of the area where the ad will render. Include it if you know it |
+| `hashedEmail` | Optional, logged-in users only: `SHA-256(email.trim().toLowerCase())` as lowercase hex. Hash it yourself — never send a plain address; anything that isn't a 64-character hex hash is dropped |
 
 Send the object as-is — there's no per-field mapping to do yourself. Our
 server resolves it into whatever real demand is actually configured for
@@ -361,9 +362,9 @@ doesn't. Two things that matter for getting full value out of it:
 Omit the `bidder` key entirely for a placement that has no content-driven
 demand — there's no reason to build one you don't need.
 
-There's no server-side equivalent of the web guide's `hashedEmail` field
-today — ask your account manager if you need logged-in-user matching for
-a server-side integration.
+`hashedEmail` (in the table above) is the server-side equivalent of the
+web guide's field of the same name. Like there, only some demand uses it,
+and omitting it changes nothing else.
 
 ### 2. Render the winning bid
 
