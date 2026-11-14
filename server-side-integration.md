@@ -85,10 +85,14 @@ const tpcData = {
   ],
 };
 
-async function runAuction() {
+// `endUser` is the person you're showing the ad to, taken from YOUR inbound
+// request (see "End-user device (required)" below): their IP address and the
+// User-Agent of their browser or app. Never your server's own IP or UA.
+async function runAuction(endUser /* { ip, ua } */) {
   const requestBody = {
     id: `req-${Date.now()}`,
     site: { page: 'https://your-site.example.com/article' },
+    device: { ip: endUser.ip, ua: endUser.ua }, // use `ipv6` instead of `ip` for an IPv6 address
     imp: [
       {
         id: '1',
@@ -124,7 +128,12 @@ async function runAuction() {
   console.log('adm:', bid.adm);
 }
 
-runAuction();
+// In your request handler, pass the visitor's details from YOUR inbound request, e.g. Express:
+//   runAuction({ ip: req.ip, ua: req.get('user-agent') })   // with app.set('trust proxy', ...) behind a load balancer
+runAuction({
+  ip: '203.0.113.7',
+  ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36',
+});
 ```
 
 **Go** (standard library only):
@@ -189,9 +198,15 @@ func main() {
 		},
 	}
 
+	// The end user's IP and User-Agent, taken from YOUR inbound request (see
+	// "End-user device (required)" below), never your server's own.
+	endUserIP := "203.0.113.7"
+	endUserUA := "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36"
+
 	requestBody := map[string]any{
-		"id":   fmt.Sprintf("req-%d", time.Now().UnixMilli()),
-		"site": map[string]any{"page": "https://your-site.example.com/article"},
+		"id":     fmt.Sprintf("req-%d", time.Now().UnixMilli()),
+		"site":   map[string]any{"page": "https://your-site.example.com/article"},
+		"device": map[string]any{"ip": endUserIP, "ua": endUserUA}, // "ipv6" for an IPv6 address
 		"imp": []map[string]any{
 			{
 				"id":     "1",
@@ -283,9 +298,15 @@ public class Example {
     }
 
     public static void main(String[] args) throws Exception {
+        // The end user's IP and User-Agent, taken from YOUR inbound request (see
+        // "End-user device (required)" below), never your server's own.
+        String endUserIp = "203.0.113.7";
+        String endUserUa = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36";
+
         String requestBody = "{"
                 + "\"id\":\"req-" + System.currentTimeMillis() + "\","
                 + "\"site\":{\"page\":\"https://your-site.example.com/article\"},"
+                + "\"device\":{\"ip\":" + jsonString(endUserIp) + ",\"ua\":" + jsonString(endUserUa) + "},"
                 + "\"imp\":[{"
                 + "\"id\":\"1\","
                 + "\"native\":{\"request\":" + jsonString(NATIVE_REQUEST) + ",\"ver\":\"1.2\"},"
@@ -322,6 +343,35 @@ public class Example {
 A banner placement's request is simpler — swap the `native` object for
 `"banner": {"w": 300, "h": 250}` and drop the `bidder` key entirely (only
 native placements use per-auction content today).
+
+### End-user device (required)
+
+Every auction request must describe **the person who will see the ad**, not
+your server. Our server sees only your server's connection, so it can't
+work this out for you.
+
+| Field | Value |
+|---|---|
+| `device.ip` | The end user's IPv4 address (use `device.ipv6` for IPv6) |
+| `device.ua` | The end user's browser or app `User-Agent`, exactly as you received it |
+| `app.bundle` + `device.ifa` | In-app only: your app's bundle/package ID and the device's advertising ID (send `device.lmt: 1` when the user has limited ad tracking) instead of `site` |
+
+Take them from **your own inbound request**: the IP that connected to you
+(or the leftmost address in `X-Forwarded-For` that your own load balancer
+set) and its `User-Agent` header.
+
+If you omit them, the auction falls back to **your server's** IP address
+and your HTTP client's User-Agent (for example `undici`, Node's built-in
+`fetch`). Demand partners treat a data-centre IP or a non-browser
+User-Agent as invalid traffic. Your placements then get no bids, and
+partners can pause the integration. We monitor this on every integration
+and will contact you if we see it.
+
+**Trackers.** Fire the ad's impression, viewability and click trackers
+from the **end user's device** (the browser or app that shows the ad), not
+from your server. Partners compare the IP and User-Agent on tracker calls
+with the bid request. If you must fire them server-side, forward the end
+user's IP in `X-Forwarded-For` and their `User-Agent`, both unchanged.
 
 ### Contextual / chat-native ads
 
@@ -588,6 +638,13 @@ the same API regardless of which integration path (web, mobile SDK, or
 this one) drives the underlying traffic.
 
 ## Testing your integration
+
+**Before going live, check the end-user fields.** Log one auction request
+body from your server. `device.ip` must be a real visitor's address (not
+your server's or a private `10.x`/`192.168.x` address), and `device.ua` must
+be their browser or app User-Agent (not `undici`, `node`, `axios`,
+`Go-http-client`, `okhttp`, `Java` or `curl`). See "End-user device
+(required)".
 
 Need a deterministic, realistic-looking bid to validate your
 parsing/rendering pipeline end-to-end — without depending on live
