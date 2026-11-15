@@ -25,6 +25,10 @@ Ad-system crawlers follow the redirect and read our file as if it were yours.
 When Hola AI adds or changes a demand partner, your site picks up the change
 automatically and you don't have to do anything.
 
+Our file also declares `MANAGERDOMAIN=sayhola.ai` (ads.txt 1.1). That tells
+buyers Hola AI is the primary seller of your inventory, so they can treat us
+as the most direct way to buy it.
+
 ## Which file do you need?
 
 | You publish… | File | Where it must live |
@@ -246,11 +250,32 @@ your own. If you already list other ad partners (your own Google AdSense or
 Ad Manager account, another SSP, a direct deal), **don't redirect**. Your
 existing partners would stop being authorised and their demand would drop.
 
-Instead, add Hola AI's lines to your existing file. Copy the current
-contents of [https://sayhola.ai/ads.txt](https://sayhola.ai/ads.txt) and
-paste them below your existing entries. Ask your Hola AI account manager to
-let you know when those lines change, since you'll need to update your copy
-by hand.
+Instead, add Hola AI's lines to your existing file. **Don't paste in our
+whole file.** A few of its lines describe Hola AI's own site, not yours:
+
+1. **Copy the seller lines** (`<domain>, <id>, DIRECT…`) from
+   [https://sayhola.ai/ads.txt](https://sayhola.ai/ads.txt), **except**
+   `sayhola.ai, 1, DIRECT`. That one is Hola AI's own seller ID.
+2. **Add your own Hola AI seller line:**
+
+   ```
+   sayhola.ai, <your seller ID>, DIRECT
+   ```
+
+   Your seller ID is your entry in Hola AI's
+   [sellers.json](https://sayhola.ai/sellers.json). Your account manager can
+   confirm it.
+3. **Keep your own `OWNERDOMAIN=` line**, or add one with your company's
+   domain (for example `OWNERDOMAIN=example.com`). Don't copy ours.
+4. **Add `MANAGERDOMAIN=sayhola.ai` only if Hola AI sells all or most of your
+   inventory.** If other partners sell a significant share, leave it out,
+   because buyers may then treat those partners as resellers. Only one
+   `MANAGERDOMAIN` without a country code is allowed, so if you already
+   declare a manager, don't add ours.
+5. **Skip our `CONTACT=` line.** It's Hola AI's contact, not yours.
+
+Ask your Hola AI account manager to let you know when Hola AI's lines
+change, since you'll need to update your copy by hand.
 
 ## Troubleshooting
 
