@@ -47,6 +47,10 @@ See "Contextual / chat-native ads" below.
 
 **Node.js** (no dependencies — uses the built-in `fetch`):
 
+> **Send the user's real message, never fixed example text.** A request that carries the same
+> message every time (earlier versions of this guide showed one) looks like test traffic, and demand
+> partners stop bidding on it. If there is no message yet, leave `messages` out.
+
 ```javascript
 const AUCTION_URL = 'https://pbs.tpcsrv.com/openrtb2/auction';
 const AUCTION_STORED_REQUEST_ID = '<your-auction-stored-request-id>';
@@ -80,7 +84,7 @@ const tpcData = {
   userId: 'stable-per-user-id',
   sessionId: 'stable-per-session-id',
   messages: [
-    { role: 'user', content: "I'm looking for new shoes" },
+    { role: 'user', content: userMessage },   // the user's latest message, never fixed text
     // { role: 'assistant', content: '...' } — add once your reply exists
   ],
 };
@@ -193,7 +197,7 @@ func main() {
 		UserID:    "stable-per-user-id",
 		SessionID: "stable-per-session-id",
 		Messages: []message{
-			{Role: "user", Content: "I'm looking for new shoes"},
+			{Role: "user", Content: userMessage}, // the user's latest message, never fixed text
 			// {Role: "assistant", Content: "..."} — add once your reply exists
 		},
 	}
@@ -286,7 +290,8 @@ public class Example {
     // placement — there's no partner-specific mapping to do on your side.
     private static final String USER_ID = "stable-per-user-id";
     private static final String SESSION_ID = "stable-per-session-id";
-    private static final String LAST_USER_MESSAGE = "I'm looking for new shoes";
+    // The user's latest message, taken from your conversation for each request (never fixed text).
+    private static String LAST_USER_MESSAGE = userMessageFromYourConversation();
 
     private static String tpcBidderExt() {
         return "\"bidder\":{\"tpc\":{"

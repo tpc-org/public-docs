@@ -148,6 +148,10 @@ live; see this guide's internal section and
 
 **iOS (Swift):**
 
+> **Send the user's real message, never fixed example text.** A request that carries the same
+> message every time (earlier versions of this guide showed one) looks like test traffic, and demand
+> partners stop bidding on it. If there is no message yet, leave `messages` out.
+
 ```swift
 // Same shape as the web/server-side integration's shared conversation
 // object — accountId, userId, sessionId, and messages, sent as-is under
@@ -183,7 +187,7 @@ nativeAdUnit.setImpORTBConfig(tpcBidderExt(
     accountId: "<your-account-id>",
     userId: "stable-per-user-id",
     sessionId: "stable-per-session-id",
-    messages: [Message(role: "user", content: "I'm looking for new shoes")]
+    messages: [Message(role: "user", content: userMessage)]   // the user's latest message, never fixed text
     // Add Message(role: "assistant", content: "...") once your reply
     // exists, and call tpcBidderExt + setImpORTBConfig again before
     // the next auction — same "re-run on every new turn" pattern as
@@ -234,7 +238,7 @@ nativeAdUnit.setImpOrtbConfig(tpcBidderExt(
     accountId = "<your-account-id>",
     userId = "stable-per-user-id",
     sessionId = "stable-per-session-id",
-    messages = listOf(Message(role = "user", content = "I'm looking for new shoes"))
+    messages = listOf(Message(role = "user", content = userMessage))   // the user's latest message, never fixed text
     // Add Message(role = "assistant", content = "...") once your reply
     // exists, and call tpcBidderExt + setImpOrtbConfig again before
     // the next auction — same "re-run on every new turn" pattern as

@@ -137,7 +137,7 @@ Set `window.tpc.data` before or after the bundle script:
   window.tpc = window.tpc || {};
   window.tpc.data = {
     messages: [               // required for contextual mode
-      { role: 'user', content: "I'm looking for new shoes" }
+      { role: 'user', content: userMessage }   // the user's latest message
     ],
     userId:      'user-123',  // optional — bundle auto-generates if omitted
     chatId:      'conv-abc',  // optional — bundle auto-generates if omitted
@@ -145,6 +145,10 @@ Set `window.tpc.data` before or after the bundle script:
   };
 </script>
 ```
+
+> **Send the user's real message, never fixed example text.** A request that carries the same
+> message every time (earlier versions of this guide showed one) looks like test traffic, and demand
+> partners stop bidding on it. If there is no message yet, leave `messages` out.
 
 `messages` is the only field that changes ad behaviour. `userId` and `chatId` are
 auto-generated when omitted — supply them only if you want to pass stable identifiers.
@@ -160,7 +164,7 @@ If a visitor is logged in and you know their email address, you can pass a
 ```html
 <script>
   window.tpc.data = {
-    messages: [{ role: 'user', content: "..." }],
+    messages: [{ role: 'user', content: userMessage }],
     hashedEmail: '<sha256 hex digest>'
   };
 </script>
@@ -288,7 +292,7 @@ A complete minimal page:
     window.tpc = {
       settings: { adDisplaySeconds: 30, adMaxRefresh: 3 },
       data: {
-        messages: [{ role: 'user', content: "I'm looking for new shoes" }]
+        messages: [{ role: 'user', content: userMessage }]   // the user's latest message
       }
     };
   </script>
