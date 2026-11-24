@@ -440,6 +440,7 @@ function renderBanner(bid, container) {
   iframe.style.height = (bid.h || 250) + 'px';
   iframe.srcdoc = bid.adm;
   container.appendChild(iframe);
+  notifyWin(bid);
 }
 
 // bid.adm is a JSON *string* for native — parse it, then map assets[].id
@@ -472,6 +473,7 @@ function renderNative(bid, container) {
   });
 
   container.appendChild(root);
+  notifyWin(bid); // win + billing notices — see below
   fireTrackers(native.imptrackers);
   deliverExtraMeasurement(native, 1); // insertion — see below
   onceViewable(root, () => deliverExtraMeasurement(native, 2)); // viewable — see below
@@ -480,6 +482,21 @@ function renderNative(bid, container) {
 function fireTrackers(urls) {
   if (!urls) return;
   for (const url of urls) new Image().src = url;
+}
+
+// OpenRTB win/billing/loss notices on the bid itself (not in adm). Some
+// demand bills only from `burl`: a bid rendered without it is not paid.
+// Call notifyWin once when the bid is rendered (renderBanner should call
+// it too). Call notifyLoss once instead for a bid you received but never
+// showed. A bid gets one or the other, never both, and never twice.
+// The price macro is already filled in; only the loss reason is yours.
+function notifyWin(bid) {
+  fireTrackers([bid.nurl, bid.burl].filter(Boolean));
+}
+
+// reason: 102 = another ad was shown instead, 2 = expired unused.
+function notifyLoss(bid, reason) {
+  if (bid.lurl) fireTrackers([bid.lurl.replace('${AUCTION_LOSS}', String(reason))]);
 }
 
 // Never fetch() a frame URL — it only counts when a browser actually
@@ -567,8 +584,19 @@ function onceViewable(el, callback) {
 }
 ```
 
+**Win, billing and loss notices.** A bid may carry OpenRTB `nurl`,
+`burl` and `lurl` at the top level of the bid (next to `adm`, not inside
+it). Fire `nurl` and `burl` exactly once, when the ad renders, not again
+on viewability or refresh. If you received a bid but never showed it
+(another ad was shown, or it expired unused), fire `lurl` once instead,
+replacing `${AUCTION_LOSS}` with `102` (lost to another ad) or `2`
+(expired). Some demand uses `burl` as its only billing record: skip it
+and those impressions are not paid. Like every other tracker here, fire
+them from the end user's browser as plain image requests.
+
 Together these functions fire everything a rendered bid ever needs:
-tracking pixels (`imptrackers` on render, `clicktrackers` on click), the
+win and billing notices (`notifyWin` on render, `notifyLoss` for a bid
+you never showed), tracking pixels (`imptrackers` on render, `clicktrackers` on click), the
 frame-or-array eventtrackers channel, and the beacon handling above for
 demand that requires it — you don't need Prebid.js or any other library
 on the page for this integration path; this is the whole rendering
