@@ -15,13 +15,19 @@ or stop bidding on your inventory altogether.
 
 Rather than copying our lines into your own file and keeping them up to date
 by hand, we recommend a **redirect**. You point your `/ads.txt` (and/or
-`/app-ads.txt`) at the file Hola AI hosts:
+`/app-ads.txt`) at **your own** file, which Hola AI hosts for you:
 
 ```
-https://sayhola.ai/ads.txt
+https://s3.tpcsrv.com/ads-txt/<your seller ID>.txt
 ```
 
-Ad-system crawlers follow the redirect and read our file as if it were yours.
+Your seller ID is your entry in Hola AI's
+[sellers.json](https://sayhola.ai/sellers.json); your account manager can tell
+you. For example, seller 32's file is `https://s3.tpcsrv.com/ads-txt/32.txt`.
+The file carries all of Hola AI's partner lines plus your own line,
+`sayhola.ai, <your seller ID>, DIRECT`, and is rebuilt daily.
+
+Ad-system crawlers follow the redirect and read the file as if it were yours.
 When Hola AI adds or changes a demand partner, your site picks up the change
 automatically and you don't have to do anything.
 
@@ -37,7 +43,7 @@ as the most direct way to buy it.
 | A mobile app (App Store / Google Play) | `app-ads.txt` | Root of the **developer website** listed on your app's store page: `https://example.com/app-ads.txt` |
 | Both | Both | Set up both redirects. They can point to the same target. |
 
-Both files redirect to the same place: **`https://sayhola.ai/ads.txt`**.
+Both files redirect to the same place: **`https://s3.tpcsrv.com/ads-txt/<your seller ID>.txt`**.
 
 Server-side integrations (your backend calling Hola AI directly, no browser
 or app) don't need either file.
@@ -61,10 +67,11 @@ own domain**, but only **one** redirect to another domain. If the chain hops
 domains twice, the crawler treats the file as an error, which is the same as
 having no file at all.
 
-1. **Use the exact target `https://sayhola.ai/ads.txt`.** Use `https://`, no
-   `www.`, and no trailing slash. `http://sayhola.ai/ads.txt` and
-   `https://www.sayhola.ai/ads.txt` both redirect again, which makes a second
-   cross-domain hop and breaks the chain.
+1. **Use the exact target `https://s3.tpcsrv.com/ads-txt/<your seller ID>.txt`.** Use `https://`, the host
+   `s3.tpcsrv.com` exactly, your numeric seller ID, and no trailing slash.
+   Any other spelling can redirect again, which makes a second cross-domain
+   hop and breaks the chain. In the examples below, replace `SELLER_ID` with
+   your seller ID.
 2. **Use a `301` (permanent) redirect.** The spec allows `301`, `302` and
    `307`. Don't use `308`, because it isn't on the spec's list and some
    crawlers won't follow it.
@@ -73,7 +80,7 @@ having no file at all.
 4. **Don't stack redirects.** If `/ads.txt` already redirects somewhere else,
    *replace* that rule rather than adding another one.
 5. **Same-domain hops first are fine.** `http://example.com/ads.txt` →
-   `https://example.com/ads.txt` → `https://sayhola.ai/ads.txt` is valid,
+   `https://example.com/ads.txt` → `https://s3.tpcsrv.com/ads-txt/SELLER_ID.txt` is valid,
    because only the last hop leaves your domain.
 6. **Delete or rename any existing `ads.txt` file** on your server. That way
    nobody later edits a file that's never served, and an ads.txt plugin
@@ -89,8 +96,8 @@ Add the following to your site's `<VirtualHost>` block for both port 80 and
 which is enabled on almost every Apache install:
 
 ```apache
-RedirectMatch 301 ^/ads\.txt$     https://sayhola.ai/ads.txt
-RedirectMatch 301 ^/app-ads\.txt$ https://sayhola.ai/ads.txt
+RedirectMatch 301 ^/ads\.txt$     https://s3.tpcsrv.com/ads-txt/SELLER_ID.txt
+RedirectMatch 301 ^/app-ads\.txt$ https://s3.tpcsrv.com/ads-txt/SELLER_ID.txt
 ```
 
 Use `RedirectMatch` with the anchored pattern rather than plain `Redirect`.
@@ -104,8 +111,8 @@ run before WordPress (or an ads.txt plugin) handles the request:
 ```apache
 <IfModule mod_rewrite.c>
 RewriteEngine On
-RewriteRule ^ads\.txt$     https://sayhola.ai/ads.txt [R=301,L]
-RewriteRule ^app-ads\.txt$ https://sayhola.ai/ads.txt [R=301,L]
+RewriteRule ^ads\.txt$     https://s3.tpcsrv.com/ads-txt/SELLER_ID.txt [R=301,L]
+RewriteRule ^app-ads\.txt$ https://s3.tpcsrv.com/ads-txt/SELLER_ID.txt [R=301,L]
 </IfModule>
 
 # BEGIN WordPress
@@ -129,11 +136,11 @@ serves your root domain (and `www.`, if separate):
 
 ```nginx
 location = /ads.txt {
-    return 301 https://sayhola.ai/ads.txt;
+    return 301 https://s3.tpcsrv.com/ads-txt/SELLER_ID.txt;
 }
 
 location = /app-ads.txt {
-    return 301 https://sayhola.ai/ads.txt;
+    return 301 https://s3.tpcsrv.com/ads-txt/SELLER_ID.txt;
 }
 ```
 
@@ -182,7 +189,7 @@ instead.
    this on some of them, add `and http.host in {"example.com" "www.example.com"}`.
 4. **Then…**
    - Type: **Static**
-   - URL: `https://sayhola.ai/ads.txt`
+   - URL: `https://s3.tpcsrv.com/ads-txt/SELLER_ID.txt`
    - Status code: **301**
    - **Preserve query string:** leave unchecked
 5. Click **Deploy**.
@@ -202,8 +209,8 @@ add these lines to the `_redirects` file in your build output directory
 (create the file if it doesn't exist), then redeploy:
 
 ```
-/ads.txt      https://sayhola.ai/ads.txt  301
-/app-ads.txt  https://sayhola.ai/ads.txt  301
+/ads.txt      https://s3.tpcsrv.com/ads-txt/SELLER_ID.txt  301
+/app-ads.txt  https://s3.tpcsrv.com/ads-txt/SELLER_ID.txt  301
 ```
 
 Always set the status code explicitly. Pages defaults to `302` when it's
@@ -223,7 +230,7 @@ Expected:
 
 ```
 HTTP/2 301
-location: https://sayhola.ai/ads.txt
+location: https://s3.tpcsrv.com/ads-txt/SELLER_ID.txt
 ```
 
 Then confirm the full chain resolves to the file's contents:
@@ -232,13 +239,13 @@ Then confirm the full chain resolves to the file's contents:
 curl -sL https://example.com/ads.txt
 ```
 
-You should see the same lines as
-[https://sayhola.ai/ads.txt](https://sayhola.ai/ads.txt). For `app-ads.txt`,
+You should see your own file, including the line
+`sayhola.ai, <your seller ID>, DIRECT`. For `app-ads.txt`,
 run the same two commands with `/app-ads.txt`.
 
 To check every hop, use `curl -sIL https://example.com/ads.txt | grep -iE '^HTTP|^location'`.
 Exactly one `location:` header should point off your domain, and it must be
-`https://sayhola.ai/ads.txt`, followed by a final `200`.
+`https://s3.tpcsrv.com/ads-txt/<your seller ID>.txt`, followed by a final `200`.
 
 Crawlers re-check the file on their own schedule, typically within a few
 days. You don't need to submit it anywhere.
